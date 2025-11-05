@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global styles */
+body {
+  background-color: #f9fafb; /* Tailwind bg-gray-50 equivalent */
+  color: #111827; /* Tailwind text-gray-900 equivalent */
+  font-family: 'Inter', sans-serif;
+}
+
+h1, h2, h3, h4, h5 {
+  font-weight: 600;
+}

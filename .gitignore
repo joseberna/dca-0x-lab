@@ -1,0 +1,55 @@
+# =====================================
+# 🔒 Environment
+# =====================================
+.env
+.env.local
+.env.*.local
+
+# =====================================
+# 📦 Dependencies
+# =====================================
+node_modules/
+**/node_modules/
+*/node_modules/
+
+# =====================================
+# 🔐 Lockfiles
+# =====================================
+package-lock.json
+**/package-lock.json
+yarn.lock
+**/yarn.lock
+pnpm-lock.yaml
+**/pnpm-lock.yaml
+
+# =====================================
+# ⚙️ Builds & Caches
+# =====================================
+dist/
+build/
+.cache/
+.next/
+tmp/
+coverage/
+backend/dist/
+client/dist/
+contracts/artifacts/
+contracts/cache/
+
+# =====================================
+# 🧪 Logs & Temp Files
+# =====================================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# =====================================
+# 🧱 System / IDE
+# =====================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
