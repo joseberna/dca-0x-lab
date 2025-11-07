@@ -7,7 +7,6 @@ export class DCAPlanRepository {
    */
   async create(planData: any) {
     try {
-      console.log("[DCAPlanRepository] Creating plan with data:", planData);
       const newPlan = await DCAPlanModel.create(planData);
       logger.info(`🧩 Nuevo plan DCA creado para ${planData.userAddress}`);
       return newPlan.toObject();
@@ -92,4 +91,50 @@ export class DCAPlanRepository {
       throw err;
     }
   }
+
+  async updateStatus(planId: string, status: string) {
+    return await DCAPlanModel.findByIdAndUpdate(planId, { status }, { new: true });
+  }
+  async markAsCompleted(planId: string) {
+    return await DCAPlanModel.findByIdAndUpdate(
+      planId,
+      {
+        status: "completed",
+        isActive: false,
+        updatedAt: new Date(),
+      },
+      { new: true }
+    );
+  }
+
+  async updateNextExecution(planId: string, data: { executedOperations: number }) {
+    const plan = await DCAPlanModel.findById(planId);
+    if (!plan) throw new Error(`Plan not found: ${planId}`);
+
+    const newExecutedOps = data.executedOperations;
+    const now = new Date();
+
+    // Calcular próxima ejecución
+    const nextExecution: any =
+      newExecutedOps < plan.totalOperations
+        ? new Date(now.getTime() + plan.intervalSeconds * 1000)
+        : null;
+
+    const isCompleted = newExecutedOps >= plan.totalOperations;
+
+    plan.executedOperations = newExecutedOps;
+    plan.lastExecution = now;
+    plan.nextExecution = nextExecution;
+    plan.status = isCompleted ? "completed" : "active";
+    plan.isActive = !isCompleted;
+    plan.updatedAt = now;
+
+    await plan.save();
+    console.log(
+      `[DCAPlanRepository] Updated execution for ${planId}: ${newExecutedOps}/${plan.totalOperations}`
+    );
+    return plan;
+  }
+
+
 }

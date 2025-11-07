@@ -2,7 +2,7 @@ import { DCAExecutionModel } from "../models/DCAExecutionModel.ts";
 
 export class DCAExecutionRepository {
   async logExecution(data: {
-    planId: string;
+    planId: object;
     userAddress: string;
     txHash?: string;
     tokenFrom: string;

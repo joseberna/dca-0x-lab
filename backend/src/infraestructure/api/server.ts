@@ -10,29 +10,27 @@ import dcaRoutes from "./routes/dca.routes.ts";
 import walletRoutes from "./routes/wallet.routes.ts";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "../../config/swagger.ts";
+import { startDCAScheduler } from "../jobs/scheduler/dcaScheduler.ts";
+import { dcaWorker } from "../jobs/workers/dcaWorker.ts";
+import { serverAdapter } from "../jobs/dashboard.ts";
 
 dotenv.config();
 
 export const startServer = async (): Promise<void> => {
   try {
-    // 1️⃣ Inicializar Express y HTTP
     const app = express();
     const server = http.createServer(app);
+    const SCHEDULER_INTERVAL = parseInt(process.env.SCHEDULER_INTERVAL || "60000");
 
-    // 2️⃣ Middleware base
     app.use(cors());
     app.use(express.json());
     app.use("/api/wallets", walletRoutes);
     app.use("/api/dca", dcaRoutes);
     app.get("/ping", (_, res) => res.send("pong 🏓"));
 
-    // 3️⃣ Swagger
     app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+    app.use("/admin/queues", serverAdapter.getRouter());
 
-    // 4️⃣ Rutas API (REST)
-    app.use("/api/dca", dcaRoutes);
-
-    // 5️⃣ Socket.io
     const io = initSocketServer(server);
     io.on("connection", (socket) => {
       logger.info(`🟢 Socket connected: ${socket.id}`);
@@ -47,14 +45,30 @@ export const startServer = async (): Promise<void> => {
       );
     });
 
-    // 6️⃣ Cron job — Ejecutar DCA cada 30s
-    nodeCron.schedule("*/30 * * * * *", async () => {
-      logger.info("⏱ Running scheduled DCA check...");
-      const dcaService = new DCAService();
-      await dcaService.executePlans();
+    // ==========================
+    // 🔹 DCA Scheduler 
+    // ==========================
+    console.log(`🕒 Scheduler running every ${SCHEDULER_INTERVAL / 1000}s`);
+
+    setInterval(async () => {
+      try {
+        await startDCAScheduler();
+      } catch (error: any) {
+        console.error("❌ DCA Scheduler error:", error.message);
+      }
+    }, SCHEDULER_INTERVAL);
+
+    // ==========================
+    // 🔹 DCA Worker (procesa ejecuciones)
+    // ==========================
+    dcaWorker.on("completed", (job) => {
+      console.log(`✅ Job ${job.id} completed`);
     });
 
-    // 7️⃣ Iniciar servidor
+    dcaWorker.on("failed", (job, err) => {
+      console.error(`❌ Job ${job?.id} failed: ${err.message}`);
+    });
+
     const PORT = process.env.PORT || 4000;
     server.listen(PORT, () => {
       logger.info(`🚀 Server running at http://localhost:${PORT}`);

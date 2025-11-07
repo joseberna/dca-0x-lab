@@ -1,0 +1,4 @@
+export const CONTRACTS = {
+  DCA_PLAN_MANAGER: process.env.NEXT_PUBLIC_DCA_CONTRACT!,
+  USDC: process.env.NEXT_PUBLIC_USDC_CONTRACT_SEPOLIA!,
+};

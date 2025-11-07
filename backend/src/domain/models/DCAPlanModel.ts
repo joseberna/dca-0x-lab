@@ -16,18 +16,23 @@ export interface DCAPlanDocument extends Omit<DCAPlan, "_id">, Document {
  */
 const DCAPlanSchema = new Schema<DCAPlanDocument>(
   {
-    userAddress: { type: String, required: true, index: true },
+    userAddress: { type: String, required: true },
+    network: { type: String, required: true },
     tokenFrom: { type: String, required: true },
     tokenTo: { type: String, required: true },
+    totalAmount: { type: Number, required: true },
     amountPerInterval: { type: Number, required: true },
-    intervalDays: { type: Number, required: true },
+    intervalSeconds: { type: Number, required: true },
     totalOperations: { type: Number, required: true },
     executedOperations: { type: Number, default: 0 },
+    lastExecution: { type: Date, default: null },
+    nextExecution: { type: Date, default: null },
     status: {
       type: String,
-      enum: ["active", "paused", "completed"],
+      enum: ["active", "paused", "completed", "failed"],
       default: "active",
     },
+    isActive: { type: Boolean, default: true },
   },
   {
     timestamps: true,

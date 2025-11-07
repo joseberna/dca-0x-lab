@@ -1,27 +1,35 @@
 import dotenv from "dotenv";
-import logger from "./config/logger.ts";
-import { connectMongo } from "./infraestructure/database/mongo.connection.ts";
+import  {connectMongo}  from "./infraestructure/database/mongo.connection.ts";
 import { startServer } from "./infraestructure/api/server.ts";
-import { DCAInitService } from "./application/services/DCAInitService.ts";
 
+// Cargar variables de entorno
 dotenv.config();
 
-(async () => {
+async function bootstrap() {
   try {
-    logger.info("🔄 Connecting to MongoDB...");
-    await connectMongo();
-    logger.info("✅ MongoDB connected successfully");
+    console.log("🚀 Starting DCA backend...");
 
-    // 🚀 Iniciar servidor Express + Socket + Cron
+    // 1️⃣ Conectar a MongoDB
+    await connectMongo();
+
+    // 2️⃣ Iniciar servidor (Express + Sockets + Scheduler)
     await startServer();
 
-    // 🧩 Crear plan inicial DCA desde .env
-    const initService = new DCAInitService();
-    await initService.initDefaultPlan();
-
-    logger.info("🌱 DCA default plan initialized successfully");
   } catch (err: any) {
-    logger.error(`❌ Error during startup: ${err.message}`);
+    console.error("❌ Fatal error initializing backend:", err.message);
     process.exit(1);
   }
-})();
+}
+
+// Global error handling
+process.on("unhandledRejection", (reason) => {
+  console.error("⚠️ Unhandled Promise Rejection:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("💥 Uncaught Exception:", err);
+  process.exit(1);
+});
+
+// Bootstrap
+bootstrap();

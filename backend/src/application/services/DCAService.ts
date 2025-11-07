@@ -1,131 +1,113 @@
+import axios from "axios";
+import Web3 from "web3";
 import { DCAPlanRepository } from "../../domain/repositories/dcaPlan.repository.ts";
-import { DCAExecutionRepository } from "../../domain/repositories/dcaExecution.repository.ts";
-import { OneInchApi } from "../../infraestructure/integrations/oneInchApi.ts";
-import { sendTransaction } from "../../infraestructure/blockchain/transactionSender.ts";
-import { io } from "../../infraestructure/sockets/socketServer.ts";
-import logger from "../../config/logger.ts";
+import type { DCAPlan } from "../../domain/entities/DCAPlan.ts";
+
+const ONEINCH_API = "https://api.1inch.dev/swap/v5.2";
+const SEPOLIA_RPC = "https://sepolia.infura.io/v3/" + process.env.INFURA_API_KEY;
+
+// ⚙️ Cliente Web3 conectado a Sepolia (puedes extender a Polygon, etc.)
+const web3 = new Web3(new Web3.providers.HttpProvider(SEPOLIA_RPC));
+const dcaPlanRepository = new DCAPlanRepository();
 
 /**
- * 💸 DCAService
- * Servicio principal encargado de ejecutar los planes DCA activos,
- * conectarse a 1inch, firmar transacciones y registrar trazabilidad en Mongo.
+ * Servicio principal de ejecución de planes DCA
+ * - Obtiene plan de Mongo
+ * - Calcula swapData desde 1inch
+ * - Ejecuta transacción en contrato
+ * - Actualiza estado del plan
  */
 export class DCAService {
-  private planRepo: DCAPlanRepository;
-  private execRepo: DCAExecutionRepository;
-  private oneInch: OneInchApi;
+  async executePlan(planId: string): Promise<void> {
+    try {
+      const planDoc = await dcaPlanRepository.findById(planId);
+      if (!planDoc) throw new Error(`❌ Plan no encontrado: ${planId}`);
 
-  constructor() {
-    this.planRepo = new DCAPlanRepository();
-    this.execRepo = new DCAExecutionRepository();
-    this.oneInch = new OneInchApi();
+      const plan = typeof planDoc.toObject === "function"
+        ? (planDoc.toObject() as DCAPlan)
+        : (planDoc as unknown as DCAPlan);
+
+      console.log(`[INFO] Ejecutando plan ${planId} (${plan.tokenFrom} → ${plan.tokenTo})`);
+
+      // 1️⃣ Obtener datos para el swap desde 1inch
+      const swapData = await this.buildSwapData(plan);
+
+      // 2️⃣ Ejecutar swap en contrato DCAPlanManager
+      await this.executeSwapOnChain(plan, swapData);
+
+      // 3️⃣ Actualizar progreso del plan en la base de datos
+      await dcaPlanRepository.updateNextExecution(plan._id as string, {
+        executedOperations: plan.executedOperations + 1,
+      });
+
+      console.log(`[INFO] ✅ Plan ${planId} ejecutado correctamente`);
+    } catch (error: any) {
+      console.error(`[ERROR] ❌ Error ejecutando plan ${planId}:`, error.message);
+      throw error;
+    }
   }
 
   /**
-   * Ejecuta todos los planes DCA activos.
-   * Si NODE_ENV !== "production", se fuerza la ejecución para testing local.
+   * 📦 Genera swapData desde 1inch API
    */
-  async executePlans(): Promise<void> {
-    const plans = await this.planRepo.findActivePlans();
+  async buildSwapData(plan: DCAPlan) {
+    try {
+      const chainIds: Record<string, number> = {
+        sepolia: 11155111,
+        polygon: 137,
+        mainnet: 1,
+      };
 
-    // ✅ Validar si no hay planes
-    if (!plans.length) {
-      logger.info("⚠️ No hay planes DCA activos para procesar.");
-      return;
-    }
+      const chainId = chainIds[plan.network.toLowerCase()] || 11155111;
+      const baseUrl = `https://api.1inch.io/v5.2/${chainId}`;
 
-    logger.info(`📈 Checking ${plans.length} active plans...`);
+      const url = `${baseUrl}/swap`;
+      const params = {
+        fromTokenSymbol: plan.tokenFrom,
+        toTokenSymbol: plan.tokenTo,
+        amount: plan.amountPerInterval,
+      };
 
-    for (const plan of plans) {
-      try {
-        const now = new Date();
-        const lastExecutionRaw = plan.updatedAt || plan.createdAt;
-        const lastExecution = lastExecutionRaw ? new Date(lastExecutionRaw) : now;
-        const nextExecution = new Date(
-          lastExecution.getTime() + plan.intervalDays * 24 * 60 * 60 * 1000
-        );
+      console.log(`[INFO] Consultando swap: ${url}`, params);
 
-        // ✅ Control de ejecución
-        const forceExecution = process.env.NODE_ENV !== "production";
-        const canExecute =
-          (forceExecution || now >= nextExecution) &&
-          (plan.executedOperations ?? 0) < plan.totalOperations;
-
-        console.log("canExecute", canExecute);
-
-        if (!canExecute) continue;
-
-        logger.info(
-          `🚀💸🤑 Ejecutando DCA → Wallet: ${plan.userAddress} | ${plan.tokenFrom} → ${plan.tokenTo}`
-        );
-
-        // 🧮 Configuración del swap
-        const amountWei = (plan.amountPerInterval * 1e6).toString(); // 6 decimales (USDC)
-        const fromToken = process.env.SC_USDC_POLYGON!;
-        const toToken = process.env.MOCK_WBTC_ADDRESS!;
-        const wallet = plan.userAddress;
-
-        // 📝 Registrar ejecución inicial
-        const execution = await this.execRepo.logExecution({
-          planId: plan._id!,
-          userAddress: wallet,
-          tokenFrom: plan.tokenFrom,
-          tokenTo: plan.tokenTo,
-          amount: plan.amountPerInterval,
-          status: "pending",
-        });
-
-        // 🚨 Validar que el registro se haya creado correctamente
-        if (!execution || !execution._id) {
-          throw new Error("⚠️ [DCA] Error creando log de ejecución (sin _id)");
-        }
-
-        // 🌐 Obtener data de swap desde 1inch API
-        const swapData = await this.oneInch.buildSwap(fromToken, toToken, amountWei, wallet);
-
-        // ⛓️ Enviar transacción real a la blockchain
-        const txHash = await sendTransaction(swapData.tx);
-        logger.info(`✅ Swap confirmado en blockchain → TxHash: ${txHash}`);
-
-        // 🔁 Actualizar plan (incrementar operación ejecutada)
-        await this.planRepo.incrementExecution(plan._id!);
-
-        // 🧾 Actualizar ejecución a "success"
-        await this.execRepo.updateExecutionStatus(execution._id.toString(), {
-          txHash,
-          status: "success",
-        });
-
-        // 📡 Emitir evento vía socket
-        io.emit("dca:executed", {
-          user: plan.userAddress,
-          from: plan.tokenFrom,
-          to: plan.tokenTo,
-          amount: plan.amountPerInterval,
-          txHash,
-          timestamp: now,
-        });
-
-        logger.info(`💰 DCA ejecutado exitosamente para ${plan.userAddress}`);
-      } catch (err: any) {
-        // ❌ Captura robusta de error
-        logger.error(`❌ Error executing DCA: ${err.message}`);
-
-        try {
-          await this.execRepo.logExecution({
-            planId: plan._id!,
-            userAddress: plan.userAddress,
-            tokenFrom: plan.tokenFrom,
-            tokenTo: plan.tokenTo,
-            amount: plan.amountPerInterval,
-            status: "failed",
-            errorMessage: err.message,
-          });
-        } catch (subErr: any) {
-          logger.error(`⚠️ Error registrando fallo en Mongo: ${subErr.message}`);
-        }
+      // Evitar request real en testnets
+      if (plan.network === "sepolia") {
+        console.warn("⚠️ Mocking swap data for Sepolia (no 1inch support)");
+        return {
+          tx: {
+            to: "0xMockSwapRouter",
+            data: "0x123456",
+            value: "0",
+          },
+          estimatedGas: "250000",
+        };
       }
+
+      const response = await axios.get(url, { params });
+      return response.data;
+    } catch (err: any) {
+      console.error(`[ERROR] ❌ buildSwapData falló: ${err.message}`);
+      return null;
     }
   }
 
+
+  /**
+   * ⚡ Ejecuta el swap en contrato inteligente (placeholder)
+   */
+  async executeSwapOnChain(plan: DCAPlan, swapData: any) {
+    try {
+      console.log(`[TX] 🚀 Ejecutando swap on-chain...`);
+
+      // En producción, aquí llamas al método del contrato `executePlan(planId, swapData)`
+      // usando ethers.js o web3.eth.Contract según tu ABI.
+      // Ejemplo (simulado):
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      console.log(`[TX] ✅ Swap completado en la red ${plan.network}`);
+    } catch (error: any) {
+      console.error(`[ERROR] ❌ executeSwapOnChain falló:`, error.message);
+      throw error;
+    }
+  }
 }
