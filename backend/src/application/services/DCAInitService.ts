@@ -14,7 +14,7 @@ export class DCAInitService {
 
     const plans = await this.planRepo.findByUser(address);
     if (plans.length > 0) {
-      console.log(`✅ Wallet ${address} ya tiene ${plans.length} planes DCA registrados`);
+      // Wallet already has plans
       return;
     }
 
@@ -33,7 +33,7 @@ export class DCAInitService {
       status: "active",
     });
 
-    console.log(`🆕 Plan DCA inicial creado para ${address}: ${perOp} ${process.env.DCA_TOKEN_FROM} cada ${process.env.DCA_INTERVAL_DAYS} días`);
+    // Initial plan created
     return newPlan;
   }
 }

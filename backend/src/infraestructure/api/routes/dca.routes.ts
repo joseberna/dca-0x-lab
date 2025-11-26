@@ -11,9 +11,79 @@ const execRepo = new DCAExecutionRepository();
 
 /**
  * @openapi
+ * /api/dca/create-on-chain:
+ *   post:
+ *     summary: Crea un plan DCA directamente en blockchain y sincroniza con DB
+ *     tags: [DCA]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userAddress
+ *               - totalAmount
+ *               - amountPerInterval
+ *               - intervalSeconds
+ *               - totalOperations
+ *             properties:
+ *               userAddress:
+ *                 type: string
+ *                 description: Dirección del usuario
+ *               totalAmount:
+ *                 type: number
+ *                 description: Monto total en USDC (sin decimales, ej. 20 = 20 USDC)
+ *               amountPerInterval:
+ *                 type: number
+ *                 description: Monto por tick en USDC
+ *               intervalSeconds:
+ *                 type: number
+ *                 description: Intervalo en segundos entre ticks
+ *               totalOperations:
+ *                 type: number
+ *                 description: Número total de operaciones
+ *     responses:
+ *       201:
+ *         description: Plan creado exitosamente on-chain y en DB
+ */
+router.post("/create-on-chain", async (req, res) => {
+  try {
+    const { userAddress, totalAmount, amountPerInterval, intervalSeconds, totalOperations } = req.body;
+    
+    // Validaciones
+    if (!userAddress || !totalAmount || !amountPerInterval || !intervalSeconds || !totalOperations) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Faltan parámetros requeridos" 
+      });
+    }
+
+    // Crear plan on-chain y obtener contractId
+    const result = await dcaService.createPlanOnChain({
+      userAddress,
+      totalAmount,
+      amountPerInterval,
+      intervalSeconds,
+      totalOperations
+    });
+
+    res.status(201).json({ 
+      success: true, 
+      data: result,
+      message: "Plan creado exitosamente on-chain y sincronizado con DB"
+    });
+  } catch (err: any) {
+    console.error("[API] Error creating plan on-chain:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/**
+ * @openapi
  * /api/dca:
  *   post:
- *     summary: Crea un nuevo plan DCA
+ *     summary: Crea un nuevo plan DCA (solo en DB, legacy)
  *     tags: [DCA]
  *     requestBody:
  *       required: true
@@ -40,7 +110,7 @@ const execRepo = new DCAExecutionRepository();
  */
 router.post("/", async (req, res) => {
   try {
-    console.log("[backend] Creating DCA plan with data:", req.body);
+    // Create DCA plan request received
     const plan = await planRepo.create(req.body);
     io.emit("dca:created", plan);
     res.status(201).json({ success: true, data: plan });

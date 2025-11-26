@@ -24,11 +24,19 @@ export const startServer = async (): Promise<void> => {
 
     app.use(cors());
     app.use(express.json());
+    
+    // Serve static files (CSS, favicon, etc.)
+    app.use(express.static('public'));
+    
     app.use("/api/wallets", walletRoutes);
     app.use("/api/dca", dcaRoutes);
     app.get("/ping", (_, res) => res.send("pong 🏓"));
 
-    app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+    app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+      customCssUrl: '/swagger-dark.css',
+      customSiteTitle: "DedlyFi DCA API",
+      customfavIcon: "/favicon.png"
+    }));
     app.use("/admin/queues", serverAdapter.getRouter());
 
     const io = initSocketServer(server);
@@ -48,15 +56,8 @@ export const startServer = async (): Promise<void> => {
     // ==========================
     // 🔹 DCA Scheduler 
     // ==========================
-    console.log(`🕒 Scheduler running every ${SCHEDULER_INTERVAL / 1000}s`);
-
-    setInterval(async () => {
-      try {
-        await startDCAScheduler();
-      } catch (error: any) {
-        console.error("❌ DCA Scheduler error:", error.message);
-      }
-    }, SCHEDULER_INTERVAL);
+    // Iniciar el scheduler una sola vez
+    await startDCAScheduler();
 
     // ==========================
     // 🔹 DCA Worker (procesa ejecuciones)

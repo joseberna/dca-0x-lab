@@ -33,7 +33,7 @@ export class DCAPlanRepository {
    */
   async findById(id: string) {
     try {
-      return await DCAPlanModel.findById(id).lean();
+      return await DCAPlanModel.findById(id);
     } catch (err: any) {
       logger.error(`❌ Error buscando plan DCA ${id}: ${err.message}`);
       throw err;
@@ -107,34 +107,52 @@ export class DCAPlanRepository {
     );
   }
 
-  async updateNextExecution(planId: string, data: { executedOperations: number }) {
+  async updateNextExecution(
+    planId: string,
+    data: {
+      executedOperations?: number;
+      status?: string;
+      isActive?: boolean;
+    }
+  ) {
     const plan = await DCAPlanModel.findById(planId);
     if (!plan) throw new Error(`Plan not found: ${planId}`);
 
-    const newExecutedOps = data.executedOperations;
     const now = new Date();
 
-    // Calcular próxima ejecución
-    const nextExecution: any =
-      newExecutedOps < plan.totalOperations
-        ? new Date(now.getTime() + plan.intervalSeconds * 1000)
-        : null;
+    // Si se proporciona executedOperations, actualizar lógica de siguiente ejecución
+    if (data.executedOperations !== undefined) {
+      const newExecutedOps = data.executedOperations;
 
-    const isCompleted = newExecutedOps >= plan.totalOperations;
+      // Calcular próxima ejecución
+      const nextExecution: any =
+        newExecutedOps < plan.totalOperations
+          ? new Date(now.getTime() + plan.intervalSeconds * 1000)
+          : null;
 
-    plan.executedOperations = newExecutedOps;
-    plan.lastExecution = now;
-    plan.nextExecution = nextExecution;
-    plan.status = isCompleted ? "completed" : "active";
-    plan.isActive = !isCompleted;
+      const isCompleted = newExecutedOps >= plan.totalOperations;
+
+      plan.executedOperations = newExecutedOps;
+      plan.lastExecution = now;
+      plan.nextExecution = nextExecution;
+      plan.status = isCompleted ? "completed" : "active";
+      plan.isActive = !isCompleted;
+    }
+
+    // Permitir override manual de status e isActive
+    if (data.status !== undefined) {
+      plan.status = data.status;
+    }
+    if (data.isActive !== undefined) {
+      plan.isActive = data.isActive;
+    }
+
     plan.updatedAt = now;
 
-    await plan.save();
     console.log(
-      `[DCAPlanRepository] Updated execution for ${planId}: ${newExecutedOps}/${plan.totalOperations}`
+      `[DCAPlanRepository] Updated execution for ${planId}: ${plan.executedOperations}/${plan.totalOperations}`
     );
-    return plan;
+
+    return await plan.save();
   }
-
-
 }

@@ -17,6 +17,7 @@ export interface DCAPlanDocument extends Omit<DCAPlan, "_id">, Document {
 const DCAPlanSchema = new Schema<DCAPlanDocument>(
   {
     userAddress: { type: String, required: true },
+    contractId: { type: Number, index: true }, // ID on-chain
     network: { type: String, required: true },
     tokenFrom: { type: String, required: true },
     tokenTo: { type: String, required: true },

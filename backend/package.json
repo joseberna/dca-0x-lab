@@ -13,23 +13,36 @@
     "test:createPlan": "yarn ts-node --project ./tsconfig.json ./tests/createPlanTest.ts",
     "approve:usdc": "npx ts-node --esm src/infraestructure/blockchain/scripts/approveUSDC.ts",
     "test:ci": "jest --coverage --maxWorkers=2 --silent",
-    "test:job": "yarn ts-node src/scripts/testDCAJob.ts"
+    "test:job": "yarn ts-node src/scripts/testDCAJob.ts",
+    "allow:usdc": "yarn ts-node src/scripts/testAllowsWallet.ts",
+    "createDCA": "yarn ts-node src/scripts/createPlanDCA.ts",
+    "test:router": "yarn ts-node src/scripts/testRouter.ts",
+    "test:pool": "yarn ts-node src/scripts/testPool.ts",
+    "biconomy": "yarn ts-node src/infraestructure/blockchain/scripts/biconomyClient.ts",
+    "test:uniswapV3": "yarn ts-node src/infraestructure/blockchain/scripts/testUniswapV3.ts"
   },
   "dependencies": {
+    "@biconomy/abstractjs": "^1.1.17",
     "@bull-board/api": "^6.14.0",
     "@bull-board/express": "^6.14.0",
+    "@metamask/delegation-toolkit": "^0.13.0",
+    "@rhinestone/module-sdk": "^0.4.0",
+    "@uniswap/sdk-core": "^7.9.0",
+    "@uniswap/smart-order-router": "4.16.0",
     "axios": "^1.7.7",
     "bullmq": "^5.63.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "ethers": "^6.13.2",
+    "dotenv": "^17.2.3",
+    "ethers": "5",
     "express": "^4.21.1",
     "ioredis": "^5.8.2",
+    "jsbi": "^4.3.2",
     "mongoose": "^8.7.1",
     "node-cron": "^4.2.1",
     "socket.io": "^4.7.5",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
+    "viem": "^2.39.3",
     "web3": "^4.16.0"
   },
   "devDependencies": {
@@ -44,6 +57,9 @@
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.4.3"
+  },
+  "resolutions": {
+    "jsbi": "4.3.0"
   },
   "packageManager": "yarn@3.6.4+sha512.e70835d4d6d62c07be76b3c1529cb640c7443f0fe434ef4b6478a5a399218cbaf1511b396b3c56eb03bc86424cff2320f6167ad2fde273aa0df6e60b7754029f"
 }

@@ -11,6 +11,10 @@ module.exports = {
     amoy: {
       url: process.env.RPC_URL_AMOY,
       accounts: [process.env.PRIVATE_KEY]
+    },
+    baseSepolia: {
+      url: process.env.RPC_BASE_SEPOLIA_URL,
+      accounts: [process.env.PRIVATE_KEY]
     }
   },
   etherscan: {

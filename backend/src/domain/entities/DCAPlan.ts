@@ -1,5 +1,6 @@
 export interface DCAPlan {
   _id?: string;
+  contractId?: number;                // ID del plan en el contrato inteligente
 
   userAddress: string;                // Wallet del usuario
   network: string;                    // Red (sepolia, polygon, etc.)

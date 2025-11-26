@@ -1,14 +1,23 @@
 import { Queue } from "bullmq";
 import { DCAPlanRepository } from "../../../domain/repositories/dcaPlan.repository.ts";
 import { redisConnection } from "../../../config/redis.ts";
+import logger from "../../../config/logger.ts";
 
 const SCHEDULER_INTERVAL = parseInt(process.env.SCHEDULER_INTERVAL || "60000", 10); // 1 min
 
 export const dcaQueue = new Queue("dca-executions", { connection: redisConnection });
 const planRepository = new DCAPlanRepository();
 
+let schedulerStarted = false;
+
 export const startDCAScheduler = async (): Promise<void> => {
-  console.log(`🕒 DCA Scheduler initialized — running every ${SCHEDULER_INTERVAL / 1000}s`);
+  // Prevenir múltiples instancias del scheduler
+  if (schedulerStarted) {
+    return;
+  }
+  
+  schedulerStarted = true;
+  logger.info(`🕒 DCA Scheduler started. Running every ${SCHEDULER_INTERVAL / 1000}s`);
 
   setInterval(async () => {
     try {
@@ -17,23 +26,28 @@ export const startDCAScheduler = async (): Promise<void> => {
       if (!activePlans.length) return;
 
       for (const plan of activePlans) {
-        // ⚙️ Asegurar que lastExecution tenga un valor válido
-        const lastExecution = plan.lastExecution ? new Date(plan.lastExecution) : new Date(0);
-        const nextExecution = new Date(lastExecution.getTime() + plan.intervalSeconds * 1000);
+        const now = new Date();
 
-        // 🧩 Ejecutar solo si el tiempo actual >= nextExecution
-        if (new Date() >= nextExecution) {
-          await dcaQueue.add("execute-plan", { planId: plan._id.toString() });
-          console.log(`📤 Queued DCA plan ${plan._id} for execution`);
-
-          await planRepository.updateNextExecution(plan._id.toString(), {
-            executedOperations: plan.executedOperations + 1,
-          });
-
+        // Solo ejecutar si ya pasó la hora programada
+        if (plan.nextExecution && now >= new Date(plan.nextExecution)) {
+          // Usar jobId único para evitar duplicados en la cola
+          const jobId = `plan-${plan._id}-${Date.now()}`;
+          
+          await dcaQueue.add(
+            "execute-plan", 
+            { planId: plan._id.toString(), contractId: plan.contractId },
+            { 
+              jobId,
+              removeOnComplete: true,
+              removeOnFail: false
+            }
+          );
+          
+          logger.info(`📤 Queued DCA plan ${plan._id} for execution (Job: ${jobId})`);
         }
       }
     } catch (error: any) {
-      console.error("❌ Error in DCA Scheduler:", error.message);
+      logger.error(`❌ Error in DCA Scheduler: ${error.message}`);
     }
   }, SCHEDULER_INTERVAL);
 };
