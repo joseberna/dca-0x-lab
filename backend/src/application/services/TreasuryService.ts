@@ -14,35 +14,44 @@ export class TreasuryService {
   private provider: ethers.providers.JsonRpcProvider;
   private wallet: ethers.Wallet;
   
-  private wbtcContract: ethers.Contract;
+  private tokenContract: ethers.Contract;
   private treasuryAddress: string;
+  private tokenSymbol: string;
+  private usdcAddress: string;
 
   // Configuración
-  private readonly LOW_BALANCE_THRESHOLD = 0.1; // 0.1 WBTC
-  private readonly REFILL_AMOUNT = 1.0;         // 1.0 WBTC
+  private readonly LOW_BALANCE_THRESHOLD: number;
+  private readonly REFILL_AMOUNT: number;
 
-  constructor() {
+  constructor(config: {
+    tokenSymbol: string;
+    tokenAddress: string;
+    treasuryAddress: string;
+    lowBalanceThreshold: number;
+    refillAmount: number;
+  }) {
+    this.tokenSymbol = config.tokenSymbol;
+    this.treasuryAddress = config.treasuryAddress;
+    this.LOW_BALANCE_THRESHOLD = config.lowBalanceThreshold;
+    this.REFILL_AMOUNT = config.refillAmount;
+
     // Configuración de red basada en ACTIVE_NETWORK
     const activeNetwork = process.env.ACTIVE_NETWORK || "sepolia";
-    
     let rpcUrl: string;
-    let wbtcAddress: string;
-    let treasuryAddress: string;
-
+    
     if (activeNetwork === "sepolia") {
       rpcUrl = process.env.RPC_URL_SEPOLIA!;
-      wbtcAddress = process.env.SM_WBTC_SEPOLIA!;
-      treasuryAddress = process.env.SM_TREASURYVAULT_SEPOLIA!;
+      // Use new variable for USDC
+      this.usdcAddress = process.env.SEPOLIA_USDC_TOKEN || process.env.SM_USDC_SEPOLIA!;
     } else if (activeNetwork === "polygon") {
       rpcUrl = process.env.RPC_URL_POLYGON!;
-      wbtcAddress = process.env.WBTC_POLYGON!;
-      treasuryAddress = process.env.DCA_TREASURY_ADDRESS!;
+      this.usdcAddress = process.env.USDC_POLYGON!;
     } else {
       throw new Error(`Invalid ACTIVE_NETWORK: ${activeNetwork}`);
     }
 
-    if (!rpcUrl || !wbtcAddress || !treasuryAddress) {
-      throw new Error(`Missing configuration for network: ${activeNetwork}`);
+    if (!rpcUrl || !config.tokenAddress || !config.treasuryAddress) {
+      throw new Error(`Missing configuration for ${this.tokenSymbol} on ${activeNetwork}`);
     }
 
     this.provider = new ethers.providers.JsonRpcProvider(rpcUrl);
@@ -51,11 +60,10 @@ export class TreasuryService {
     if (!privateKey) throw new Error("PRIVATE KEY no configurada");
 
     this.wallet = new ethers.Wallet(privateKey, this.provider);
-    this.treasuryAddress = treasuryAddress;
-    this.wbtcContract = new ethers.Contract(wbtcAddress, ERC20_ABI, this.wallet);
+    this.tokenContract = new ethers.Contract(config.tokenAddress, ERC20_ABI, this.wallet);
     
-    logger.info(`🏦 TreasuryService inicializado en red: ${activeNetwork}`);
-    logger.info(`📍 Treasury Vault: ${this.treasuryAddress}`);
+    logger.info(`🏦 TreasuryService (${this.tokenSymbol}) inicializado en red: ${activeNetwork}`);
+    logger.info(`📍 Vault: ${this.treasuryAddress}`);
   }
 
   /**
@@ -65,24 +73,24 @@ export class TreasuryService {
   async checkAndRefill(): Promise<void> {
     try {
         // 1. Verificar balance de WBTC en Treasury
-        const wbtcBalanceWei = await this.wbtcContract.balanceOf(this.treasuryAddress);
-        const wbtcBalance = parseFloat(ethers.utils.formatUnits(wbtcBalanceWei, 8));
+        const balanceWei = await this.tokenContract.balanceOf(this.treasuryAddress);
+        const balance = parseFloat(ethers.utils.formatUnits(balanceWei, this.tokenSymbol === 'USDC' ? 6 : (this.tokenSymbol === 'WBTC' ? 8 : 18)));
 
-        logger.info(`💰 Balance Treasury (WBTC): ${wbtcBalance.toFixed(4)} WBTC`, { service: 'TreasuryService', method: 'checkAndRefill' });
+        logger.info(`💰 Balance Treasury (${this.tokenSymbol}): ${balance.toFixed(4)} ${this.tokenSymbol}`, { service: 'TreasuryService', method: 'checkAndRefill' });
 
         // 2. Verificar acumulación de USDC en UserVault
         await this.checkUserVaultAndSwap();
 
         // 3. Si Treasury está bajo, recargar
-        if (wbtcBalance < this.LOW_BALANCE_THRESHOLD) {
+        if (balance < this.LOW_BALANCE_THRESHOLD) {
             // 🚨 ALERTA GIGANTE PARA EL ADMIN
             logger.error(`\n${"🚨".repeat(40)}`);
             logger.error(`${"█".repeat(80)}`);
             logger.error(`█${" ".repeat(78)}█`);
-            logger.error(`█  ⚠️  ALERTA CRÍTICA: TREASURY WBTC BAJO  ⚠️${" ".repeat(32)}█`);
+            logger.error(`█  ⚠️  ALERTA CRÍTICA: TREASURY ${this.tokenSymbol} BAJO  ⚠️${" ".repeat(32)}█`);
             logger.error(`█${" ".repeat(78)}█`);
-            logger.error(`█  Balance actual: ${wbtcBalance.toFixed(8)} WBTC${" ".repeat(50 - wbtcBalance.toFixed(8).length)}█`);
-            logger.error(`█  Threshold mínimo: ${this.LOW_BALANCE_THRESHOLD} WBTC${" ".repeat(50 - this.LOW_BALANCE_THRESHOLD.toString().length)}█`);
+            logger.error(`█  Balance actual: ${balance.toFixed(8)} ${this.tokenSymbol}${" ".repeat(50 - balance.toFixed(8).length)}█`);
+            logger.error(`█  Threshold mínimo: ${this.LOW_BALANCE_THRESHOLD} ${this.tokenSymbol}${" ".repeat(50 - this.LOW_BALANCE_THRESHOLD.toString().length)}█`);
             logger.error(`█${" ".repeat(78)}█`);
             logger.error(`█  🔴 ACCIÓN REQUERIDA: RECARGA MANUAL NECESARIA 🔴${" ".repeat(28)}█`);
             logger.error(`█${" ".repeat(78)}█`);
@@ -91,7 +99,7 @@ export class TreasuryService {
             
             await this.refillInventory();
         } else {
-            logger.info(`✅ Treasury saludable.`, { service: 'TreasuryService', method: 'checkAndRefill' });
+            logger.info(`✅ Treasury (${this.tokenSymbol}) saludable.`, { service: 'TreasuryService', method: 'checkAndRefill' });
         }
 
     } catch (error: any) {
@@ -147,29 +155,34 @@ export class TreasuryService {
     const isTestnet = activeNetwork === "sepolia";
 
     if (isTestnet) {
-      // En testnet, simulamos el swap minteando WBTC equivalente
-      logger.info(`🧪 Testnet: Simulando swap de ${usdcAmount.toFixed(2)} USDC → WBTC`, { service: 'TreasuryService', method: 'executeBatchSwap' });
+      // En testnet, simulamos el swap minteando el token equivalente
+      logger.info(`🧪 Testnet: Simulando swap de ${usdcAmount} USDC → ${this.tokenSymbol}`, { service: 'TreasuryService', method: 'executeBatchSwap' });
       
-      // Precio simulado: 1 WBTC = 50,000 USDC
-      const wbtcPrice = 50000;
-      const wbtcAmount = usdcAmount / wbtcPrice;
+      // Simular precio (ej. 50,000 USDC/BTC o 2,000 USDC/ETH)
+      const price = this.tokenSymbol === 'WBTC' ? 50000 : 2000; // Default to 2000 for other tokens
+      const amountOut = usdcAmount / price;
       
-      logger.info(`   💱 Swap: ${usdcAmount.toFixed(2)} USDC → ${wbtcAmount.toFixed(8)} WBTC (precio: $${wbtcPrice.toLocaleString()})`, { service: 'TreasuryService', method: 'executeBatchSwap' });
+      logger.info(`   💱 Swap: ${usdcAmount.toFixed(2)} USDC → ${amountOut.toFixed(8)} ${this.tokenSymbol} (precio: $${price})`, { service: 'TreasuryService', method: 'executeBatchSwap' });
       
       try {
-        const wbtcAmountWei = ethers.utils.parseUnits(wbtcAmount.toFixed(8), 8);
-        const tx = await this.wbtcContract.mint(this.treasuryAddress, wbtcAmountWei);
-        logger.info(`⏳ Minteando WBTC... Hash: ${tx.hash}`, { service: 'TreasuryService', method: 'executeBatchSwap', txHash: tx.hash });
-        await tx.wait();
-        logger.info(`\n${'$'.repeat(80)}`, { service: 'TreasuryService' });
-        logger.info(`✅ BATCH SWAP COMPLETADO`, { service: 'TreasuryService', method: 'executeBatchSwap' });
-        logger.info(`${'$'.repeat(80)}`, { service: 'TreasuryService' });
+        // Mint Token (simulado)
+        if (this.tokenContract.mint) {
+            const amountOutWei = ethers.utils.parseUnits(amountOut.toString(), this.tokenSymbol === 'WBTC' ? 8 : 18);
+            const tx = await this.tokenContract.mint(this.treasuryAddress, amountOutWei);
+            
+            logger.info(`⏳ Minteando ${this.tokenSymbol}... Hash: ${tx.hash}`, { service: 'TreasuryService', method: 'executeBatchSwap', txHash: tx.hash });
+            await tx.wait();
+        }
+
+        logger.info(`\n${"$".repeat(80)}`, { service: 'TreasuryService' });
+        logger.info(`✅ BATCH SWAP COMPLETADO (${this.tokenSymbol})`, { service: 'TreasuryService', method: 'executeBatchSwap' });
+        logger.info(`${"$".repeat(80)}`, { service: 'TreasuryService' });
         logger.info(`📥 USDC consumido: ${usdcAmount.toFixed(2)} USDC`, { service: 'TreasuryService', method: 'executeBatchSwap' });
-        logger.info(`📤 WBTC minteado: +${wbtcAmount.toFixed(8)} WBTC`, { service: 'TreasuryService', method: 'executeBatchSwap' });
+        logger.info(`📤 ${this.tokenSymbol} minteado: +${amountOut.toFixed(8)} ${this.tokenSymbol}`, { service: 'TreasuryService', method: 'executeBatchSwap' });
         logger.info(`🏦 Destino: Treasury Vault`, { service: 'TreasuryService', method: 'executeBatchSwap' });
-        logger.info(`${'$'.repeat(80)}\n`, { service: 'TreasuryService' });
+        logger.info(`${"$".repeat(80)}\n`, { service: 'TreasuryService' });
       } catch (error: any) {
-        logger.error(`❌ Error en batch swap: ${error.message}`);
+        logger.error(`❌ Error en batch swap: ${error.message}`, { service: 'TreasuryService', method: 'executeBatchSwap' });
       }
     } else {
       // En mainnet, ejecutar swap real
@@ -189,16 +202,23 @@ export class TreasuryService {
     const isTestnet = activeNetwork === "sepolia";
 
     if (isTestnet) {
-        logger.info("🧪 Modo Testnet: Minteando WBTC de emergencia...");
-        try {
-            const amountWei = ethers.utils.parseUnits(this.REFILL_AMOUNT.toString(), 8);
-            const tx = await this.wbtcContract.mint(this.treasuryAddress, amountWei);
-            logger.info(`⏳ Minteando... Hash: ${tx.hash}`);
-            await tx.wait();
-            logger.info(`✅ Recarga de emergencia completada: +${this.REFILL_AMOUNT} WBTC`);
-        } catch (error: any) {
-            logger.error(`❌ Falló el minteo: ${error.message}`);
-        }
+      // En Testnet, simplemente minteamos más tokens (si es Mock)
+      // En Mainnet, aquí iría la lógica de swap real (Uniswap/1inch)
+      
+      // Check if it's a mock by checking if 'mint' exists
+      if (this.tokenContract.mint) {
+          logger.info(`🧪 Testnet: Minteando ${this.REFILL_AMOUNT} ${this.tokenSymbol} para Treasury...`);
+          
+          const amountWei = ethers.utils.parseUnits(this.REFILL_AMOUNT.toString(), this.tokenSymbol === 'WBTC' ? 8 : 18);
+          const tx = await this.tokenContract.mint(this.treasuryAddress, amountWei);
+          
+          logger.info(`⏳ Minteando... Hash: ${tx.hash}`);
+          await tx.wait();
+          
+          logger.info(`✅ Recarga completada: +${this.REFILL_AMOUNT} ${this.tokenSymbol}`);
+      } else {
+          logger.warn(`⚠️ No se puede recargar automáticamente en Mainnet (no es Mock)`);
+      }
     } else {
         logger.warn("🚧 Modo Mainnet: Recarga manual requerida o swap automático desde fondos del protocolo.");
     }

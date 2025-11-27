@@ -149,8 +149,9 @@ export class DCAPlanRepository {
 
     plan.updatedAt = now;
 
-    console.log(
-      `[DCAPlanRepository] Updated execution for ${planId}: ${plan.executedOperations}/${plan.totalOperations}`
+    logger.info(
+      `[DCAPlanRepository] Updated execution for ${planId}: ${plan.executedOperations}/${plan.totalOperations}`,
+      { service: 'System', method: 'Repository' }
     );
 
     return await plan.save();

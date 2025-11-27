@@ -7,12 +7,12 @@ import { DCAExecutionRepository } from "../../domain/repositories/dcaExecution.r
 
 dotenv.config();
 
-// ABI mínimo para DCAAccounting
+// ABI mínimo para DCAAccountingV2
 const DCA_ACCOUNTING_ABI = [
   "function executeTick(uint256 planId) external",
-  "function createPlan(address tokenFrom, address tokenTo, uint256 totalBudget, uint256 amountPerTick, uint256 interval, uint256 totalTicks) external returns (uint256)",
-  "function plans(uint256 planId) external view returns (address user, address tokenFrom, address tokenTo, uint256 totalBudget, uint256 amountPerTick, uint256 totalTicks, uint256 executedTicks, uint256 interval, uint256 lastExecution, bool active)",
-  "event PlanCreated(uint256 indexed planId, address indexed user, uint256 totalBudget)"
+  "function createPlan(string toToken, uint256 totalBudget, uint256 amountPerTick, uint256 interval, uint256 totalTicks) external returns (uint256)",
+  "function plans(uint256 planId) external view returns (address user, string fromToken, string toToken, uint256 totalBudget, uint256 amountPerTick, uint256 totalTicks, uint256 executedTicks, uint256 interval, uint256 lastExecution, bool active)",
+  "event PlanCreated(uint256 indexed planId, address indexed user, string toToken, uint256 totalBudget)"
 ];
 
 // ABI mínimo para ERC20 (approve)
@@ -34,13 +34,14 @@ export class DCAService {
 
     // Configuración de red basada en ACTIVE_NETWORK
     const activeNetwork = process.env.ACTIVE_NETWORK || "sepolia";
-    
+
     let rpcUrl: string;
     let accountingAddress: string;
 
     if (activeNetwork === "sepolia") {
       rpcUrl = process.env.RPC_URL_SEPOLIA!;
-      accountingAddress = process.env.SM_ACCOUNTING_SEPOLIA!;
+      // Use new V2 address variable
+      accountingAddress = process.env.SEPOLIA_ACCOUNTING || process.env.SM_ACCOUNTING_SEPOLIA!;
     } else if (activeNetwork === "polygon") {
       rpcUrl = process.env.RPC_URL_POLYGON!;
       accountingAddress = process.env.DCA_ACCOUNTING_ADDRESS!;
@@ -64,8 +65,8 @@ export class DCAService {
       this.wallet
     );
 
-    logger.info(`🔥 DCAService inicializado en red: ${activeNetwork}`);
-    logger.info(`📍 Contrato Accounting: ${accountingAddress}`);
+    logger.info(`🔥 DCAService inicializado en red: ${activeNetwork}`, { service: 'DCAService' });
+    logger.info(`📍 Contrato Accounting: ${accountingAddress}`, { service: 'DCAService' });
   }
 
   // ===========================================================
@@ -74,110 +75,112 @@ export class DCAService {
 
   async createPlanOnChain(params: {
     userAddress: string;
+    toToken: string;  // NEW: "WETH", "WBTC", etc.
     totalAmount: number;
     amountPerInterval: number;
     intervalSeconds: number;
     totalOperations: number;
   }) {
-    const { userAddress, totalAmount, amountPerInterval, intervalSeconds, totalOperations } = params;
+    const { userAddress, toToken, intervalSeconds, totalOperations } = params;
+    let { totalAmount, amountPerInterval } = params;
 
-    // Obtener direcciones de tokens desde .env basado en ACTIVE_NETWORK
+    // FIX: Convert human-readable units to atomic units if needed
+    // Heuristic: If amount < 1,000,000 (1 USDC), assume it's human readable (e.g. 20) and multiply by 10^6
+    if (totalAmount < 1000000) {
+      logger.info(`🔄 Converting totalAmount ${totalAmount} to atomic units (x10^6)`, { service: 'DCAService' });
+      totalAmount = Math.floor(totalAmount * 1000000);
+    }
+
+    if (amountPerInterval < 1000000) {
+      logger.info(`🔄 Converting amountPerInterval ${amountPerInterval} to atomic units (x10^6)`, { service: 'DCAService' });
+      amountPerInterval = Math.floor(amountPerInterval * 1000000);
+    }
+
+    logger.info(`📝 Creating plan on-chain for user ${userAddress}...`, { service: 'DCAService' });
+    logger.info(`    Token: ${toToken}`, { service: 'DCAService' });
+    logger.info(`    Total: ${totalAmount / 1e6} USDC, Per Tick: ${amountPerInterval / 1e6} USDC`, { service: 'DCAService' });
+
+    // 1. Approve USDC
     const network = process.env.ACTIVE_NETWORK || "sepolia";
-    
     let usdcAddress: string;
-    let wbtcAddress: string;
 
     if (network === "sepolia") {
-      usdcAddress = process.env.SM_USDC_SEPOLIA!;
-      wbtcAddress = process.env.SM_WBTC_SEPOLIA!;
-    } else if (network === "polygon") {
-      usdcAddress = process.env.USDC_POLYGON!;
-      wbtcAddress = process.env.WBTC_POLYGON!;
+      // Use the new Multi-Token variable if available, fallback to old
+      usdcAddress = process.env.SEPOLIA_USDC_TOKEN || process.env.SM_USDC_SEPOLIA!;
     } else {
-      throw new Error(`Invalid ACTIVE_NETWORK: ${network}`);
+      usdcAddress = process.env.USDC_POLYGON!;
     }
 
-    if (!usdcAddress || !wbtcAddress) {
-      throw new Error(`Token addresses not configured for network: ${network}`);
+    if (!usdcAddress) {
+      throw new Error(`USDC address not configured for network: ${network}`);
     }
 
-    // Convertir a unidades con decimales (USDC = 6 decimals)
-    const totalBudget = ethers.utils.parseUnits(totalAmount.toString(), 6);
-    const amountPerTick = ethers.utils.parseUnits(amountPerInterval.toString(), 6);
-
-    logger.info(`📝 Creating plan on-chain for user ${userAddress}...`);
-    logger.info(`   Total: ${totalAmount} USDC, Per Tick: ${amountPerInterval} USDC`);
-
-    // PASO 1: Aprobar USDC al contrato DCAAccounting
-    logger.info(`🔐 Approving ${totalAmount} USDC to DCAAccounting...`);
     const usdcContract = new ethers.Contract(usdcAddress, ERC20_ABI, this.wallet);
+
+    logger.info(`🔐 Approving ${totalAmount / 1e6} USDC to DCAAccounting...`, { service: 'DCAService' });
+
     const approveTx = await usdcContract.approve(
       this.accountingContract.address,
-      totalBudget
+      totalAmount.toString()
     );
-    logger.info(`⏳ Waiting for approval... Hash: ${approveTx.hash}`);
-    await approveTx.wait();
-    logger.info(`✅ USDC approved`);
 
-    // PASO 2: Crear plan en blockchain
-    logger.info(`📝 Creating plan on blockchain...`);
+    logger.info(`⏳ Waiting for approval... Hash: ${approveTx.hash}`, { service: 'DCAService' });
+    await approveTx.wait();
+    logger.info("✅ USDC approved", { service: 'DCAService' });
+
+    // 2. Create plan on DCAAccountingV2
+    logger.info("📝 Creating plan on blockchain...", { service: 'DCAService' });
+
     const tx = await this.accountingContract.createPlan(
-      usdcAddress,
-      wbtcAddress,
-      totalBudget,
-      amountPerTick,
+      toToken,  // NEW: Pass token symbol
+      totalAmount.toString(),
+      amountPerInterval.toString(),
       intervalSeconds,
       totalOperations
     );
 
-    logger.info(`⏳ Waiting for transaction confirmation... Hash: ${tx.hash}`);
+    logger.info(`⏳ Waiting for transaction confirmation... Hash: ${tx.hash}`, { service: 'DCAService' });
     const receipt = await tx.wait();
 
-    logger.info(`📋 Transaction confirmed. Parsing ${receipt.logs.length} logs...`);
+    // 3. Parse event to get planId
+    logger.info(`📋 Transaction confirmed. Parsing ${receipt.logs.length} logs...`, { service: 'DCAService' });
 
-    // Extraer planId del evento PlanCreated
-    // Filtrar solo logs del contrato DCAAccounting
-    const accountingLogs = receipt.logs.filter((log: any) => 
-      log.address.toLowerCase() === this.accountingContract.address.toLowerCase()
+    const accountingLogs = receipt.logs.filter(
+      (log: any) => log.address.toLowerCase() === this.accountingContract.address.toLowerCase()
     );
 
-    logger.info(`🔍 Found ${accountingLogs.length} logs from DCAAccounting contract`);
+    logger.info(`🔍 Found ${accountingLogs.length} logs from DCAAccounting contract`, { service: 'DCAService' });
 
-    const event = accountingLogs.find((log: any) => {
+    let planId: number | null = null;
+
+    for (const log of accountingLogs) {
       try {
         const parsed = this.accountingContract.interface.parseLog(log);
-        logger.info(`   Event: ${parsed?.name}`);
-        return parsed?.name === "PlanCreated";
-      } catch (e) {
-        return false;
-      }
-    });
+        logger.info(`    Event: ${parsed.name}`, { service: 'DCAService' });
 
-    if (!event) {
-      logger.error(`❌ PlanCreated event not found. Available events:`);
-      accountingLogs.forEach((log: any) => {
-        try {
-          const parsed = this.accountingContract.interface.parseLog(log);
-          logger.error(`   - ${parsed.name}`);
-        } catch (e) {
-          logger.error(`   - Unable to parse log`);
+        if (parsed.name === "PlanCreated") {
+          planId = parsed.args.planId.toNumber();
+          logger.info(`✅ Plan created on-chain with ID: ${planId}`, { service: 'DCAService' });
+          break;
         }
-      });
-      throw new Error("PlanCreated event not found in transaction receipt");
+      } catch (e) {
+        // Skip logs that don't match
+      }
     }
 
-    const parsedLog = this.accountingContract.interface.parseLog(event);
-    const contractId = parsedLog.args.planId.toNumber();
+    if (planId === null) {
+      throw new Error("Could not extract planId from transaction receipt");
+    }
 
-    logger.info(`✅ Plan created on-chain with ID: ${contractId}`);
+    logger.info(`🧩 Nuevo plan DCA creado para ${userAddress}`, { service: 'DCAService' });
 
-    // Guardar en base de datos
+    // Save to database
     const dbPlan = await this.planRepo.create({
       userAddress,
-      contractId,
+      contractId: planId,
       network,
       tokenFrom: "USDC",
-      tokenTo: "WBTC",
+      tokenTo: toToken,  // NEW: Save selected token
       totalAmount,
       amountPerInterval,
       intervalSeconds,
@@ -189,12 +192,13 @@ export class DCAService {
       isActive: true,
     });
 
-    logger.info(`✅ Plan synced to database with _id: ${dbPlan._id}`);
+    logger.info(`✅ Plan synced to database with _id: ${dbPlan._id}`, { service: 'DCAService' });
 
     return {
-      contractId,
+      contractId: planId,
       dbId: dbPlan._id,
       txHash: tx.hash,
+      toToken,  // NEW: Return selected token
       plan: dbPlan
     };
   }
@@ -217,7 +221,7 @@ export class DCAService {
       });
     }
 
-    logger.info(`🔵 Ejecutando plan DCA → ${planId}`);
+    logger.info(`🔵 Ejecutando plan DCA → ${planId}`, { service: 'DCAService' });
 
     // Log de intento de ejecución
     const exec = await this.execRepo.logExecution({
@@ -247,15 +251,19 @@ export class DCAService {
       const newStatus = ops >= data.totalOperations ? "completed" : "active";
 
       // 📊 LOGS DETALLADOS DEL TICK
-      logger.info(`\n${"=".repeat(80)}`);
-      logger.info(`✅ TICK COMPLETADO - Plan ${planId}`);
-      logger.info(`${"=".repeat(80)}`);
-      logger.info(`👤 Usuario: ${data.userAddress}`);
-      logger.info(`💵 USDC gastado: ${data.amountPerInterval} USDC`);
-      logger.info(`🪙  WBTC recibido: ~${(data.amountPerInterval / 50000).toFixed(8)} WBTC (estimado)`);
-      logger.info(`📊 Progreso: ${ops}/${data.totalOperations} ticks`);
-      logger.info(`🔗 TX Hash: ${txHash}`);
-      logger.info(`${"=".repeat(80)}\n`);
+      const usdcSpent = data.amountPerInterval / 1e6;
+      // Use correct price per token
+      const tokenPrice = data.tokenTo === 'WETH' ? 2000 : 50000; // WETH: $2000, WBTC: $50000
+      const tokenReceived = usdcSpent / tokenPrice;
+      logger.info(`\n${"=".repeat(80)}`, { service: 'DCAService' });
+      logger.info(`✅ TICK COMPLETADO - Plan ${planId}`, { service: 'DCAService' });
+      logger.info(`${"=".repeat(80)}`, { service: 'DCAService' });
+      logger.info(`👤 Usuario: ${data.userAddress}`, { service: 'DCAService' });
+      logger.info(`💵 USDC gastado: ${usdcSpent.toFixed(2)} USDC`, { service: 'DCAService' });
+      logger.info(`🪙  Token (${data.tokenTo}) recibido: ~${tokenReceived.toFixed(8)} (estimado)`, { service: 'DCAService' });
+      logger.info(`📊 Progreso: ${ops}/${data.totalOperations} ticks`, { service: 'DCAService' });
+      logger.info(`🔗 TX Hash: ${txHash}`, { service: 'DCAService' });
+      logger.info(`${"=".repeat(80)}\n`, { service: 'DCAService' });
 
       await this.planRepo.updateNextExecution(planId, {
         executedOperations: ops,
@@ -268,25 +276,25 @@ export class DCAService {
         status: "success",
       });
 
-      logger.info(`✅ Tick completado → TX: ${txHash}`);
+      logger.info(`✅ Tick completado → TX: ${txHash}`, { service: 'DCAService' });
 
     } catch (err: any) {
       // Detectar si el error es porque el plan ya está inactivo/completado
       if (err.message && err.message.includes("Plan inactive")) {
         logger.warn(`⚠️ Plan ${planId} está inactivo on-chain. Verificando estado...`);
-        
+
         // Verificar el estado real del plan en blockchain
         const onChainPlan = await this.accountingContract.plans(data.contractId);
-        
+
         if (!onChainPlan.active && onChainPlan.executedTicks.toNumber() >= onChainPlan.totalTicks.toNumber()) {
           // Plan completado on-chain
-          logger.info(`✅ Plan ${planId} completado on-chain. Actualizando DB...`);
+          logger.info(`✅ Plan ${planId} completado on-chain. Actualizando DB...`, { service: 'DCAService' });
           await this.planRepo.updateNextExecution(planId, {
             executedOperations: onChainPlan.totalTicks.toNumber(),
             status: "completed",
             isActive: false,
           });
-          
+
           await this.execRepo.updateExecutionStatus(exec._id, {
             status: "failed",
             errorMessage: "Plan already completed on-chain",
@@ -318,19 +326,15 @@ export class DCAService {
   private async executeTickOnChain(mongoPlanId: string): Promise<string> {
     // Recuperar el plan para obtener su ID numérico on-chain
     const plan = await this.planRepo.findById(mongoPlanId);
-    // logger.info(`Plan encontrado: ${JSON.stringify(plan)}`);
     if (!plan || !plan.contractId) {
       throw new Error("Plan no encontrado o sin contractId");
     }
 
-    logger.info(`⛓️ Enviando transacción executeTick(${plan.contractId}) a la blockchain...`);
-
-    // Estimación de gas opcional pero recomendada
-    // const gasLimit = await this.accountingContract.estimateGas.executeTick(plan.contractId);
+    logger.info(`⛓️ Enviando transacción executeTick(${plan.contractId}) a la blockchain...`, { service: 'DCAService' });
 
     const tx = await this.accountingContract.executeTick(plan.contractId);
 
-    logger.info(`⏳ Esperando confirmación... Hash: ${tx.hash}`);
+    logger.info(`⏳ Esperando confirmación... Hash: ${tx.hash}`, { service: 'DCAService' });
     await tx.wait(); // Esperar 1 confirmación
 
     return tx.hash;

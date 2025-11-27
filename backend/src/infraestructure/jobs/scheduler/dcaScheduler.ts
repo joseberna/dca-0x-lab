@@ -17,7 +17,7 @@ export const startDCAScheduler = async (): Promise<void> => {
   }
   
   schedulerStarted = true;
-  logger.info(`🕒 DCA Scheduler started. Running every ${SCHEDULER_INTERVAL / 1000}s`);
+  logger.info(`🕒 DCA Scheduler started. Running every ${SCHEDULER_INTERVAL / 1000}s`, { service: 'System', method: 'Scheduler' });
 
   setInterval(async () => {
     try {
@@ -43,11 +43,11 @@ export const startDCAScheduler = async (): Promise<void> => {
             }
           );
           
-          logger.info(`📤 Queued DCA plan ${plan._id} for execution (Job: ${jobId})`);
+          logger.info(`📤 Queued DCA plan ${plan._id} for execution (Job: ${jobId})`, { service: 'System', method: 'Scheduler' });
         }
       }
     } catch (error: any) {
-      logger.error(`❌ Error in DCA Scheduler: ${error.message}`);
+      logger.error(`❌ Error in DCA Scheduler: ${error.message}`, { service: 'System', method: 'Scheduler' });
     }
   }, SCHEDULER_INTERVAL);
 };

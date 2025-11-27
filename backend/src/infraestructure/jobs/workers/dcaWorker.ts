@@ -15,8 +15,8 @@ export const dcaWorker = new Worker(
   async (job) => {
     const { planId, contractId } = job.data;
     try {
-      logger.info(`🚀 Executing DCA planID ${planId}...`);
-      logger.info(`🚀 Executing DCA contractId ${contractId}...`);
+      logger.info(`🚀 Executing DCA planID ${planId}...`, { service: 'System', method: 'Worker' });
+      logger.info(`🚀 Executing DCA contractId ${contractId}...`, { service: 'System', method: 'Worker' });
 
       // 1️⃣ Ejecutar el plan (swap on-chain o mock)
       await dcaService.executePlan(planId);
@@ -36,15 +36,16 @@ export const dcaWorker = new Worker(
         });
 
         logger.info(
-          `[INFO] Plan ${planId} programado nuevamente para ${nextExecution.toISOString()}`
+          `[INFO] Plan ${planId} programado nuevamente para ${nextExecution.toISOString()}`,
+          { service: 'System', method: 'Worker' }
         );
       } else {
-        logger.info(`[INFO] ✅ Plan ${planId} completado definitivamente`);
+        logger.info(`[INFO] ✅ Plan ${planId} completado definitivamente`, { service: 'System', method: 'Worker' });
       }
 
       return { success: true, planId };
     } catch (error: any) {
-      logger.error(`❌ Job ${job.id} failed: ${error.message}`);
+      logger.error(`❌ Job ${job.id} failed: ${error.message}`, { service: 'System', method: 'Worker' });
       throw error;
     }
   },
@@ -58,5 +59,5 @@ export const dcaWorker = new Worker(
 );
 
 dcaWorker.on("failed", (job, err) => {
-  console.error(`❌ Job ${job?.id} failed: ${err.message}`);
+  logger.error(`❌ Job ${job?.id} failed: ${err.message}`, { service: 'System', method: 'Worker' });
 });

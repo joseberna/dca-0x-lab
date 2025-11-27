@@ -1,8 +1,10 @@
+```typescript
 import { Router } from "express";
 import { DCAService } from "../../../application/services/DCAService.ts";
 import { DCAPlanRepository } from "../../../domain/repositories/dcaPlan.repository.ts";
 import { DCAExecutionRepository } from "../../../domain/repositories/dcaExecution.repository.ts";
 import { io } from "../../sockets/socketServer.ts";
+import logger from "../../../config/logger.ts";
 
 const router = Router();
 const dcaService = new DCAService();
@@ -23,6 +25,7 @@ const execRepo = new DCAExecutionRepository();
  *             type: object
  *             required:
  *               - userAddress
+ *               - toToken
  *               - totalAmount
  *               - amountPerInterval
  *               - intervalSeconds
@@ -30,18 +33,28 @@ const execRepo = new DCAExecutionRepository();
  *             properties:
  *               userAddress:
  *                 type: string
+ *                 example: "0x0C1ee65e59Cd82C1C6FF3bc0d5E612190F45264D"
  *                 description: Dirección del usuario
+ *               toToken:
+ *                 type: string
+ *                 enum: [WETH, WBTC, SOL]
+ *                 example: "WETH"
+ *                 description: Token destino (WETH, WBTC, SOL)
  *               totalAmount:
  *                 type: number
- *                 description: Monto total en USDC (sin decimales, ej. 20 = 20 USDC)
+ *                 example: 300000000
+ *                 description: Monto total en USDC (6 decimals) - 300000000 = 300 USDC
  *               amountPerInterval:
  *                 type: number
- *                 description: Monto por tick en USDC
+ *                 example: 100000000
+ *                 description: USDC por tick (6 decimals) - 100000000 = 100 USDC
  *               intervalSeconds:
  *                 type: number
+ *                 example: 120
  *                 description: Intervalo en segundos entre ticks
  *               totalOperations:
  *                 type: number
+ *                 example: 3
  *                 description: Número total de operaciones
  *     responses:
  *       201:
@@ -49,10 +62,10 @@ const execRepo = new DCAExecutionRepository();
  */
 router.post("/create-on-chain", async (req, res) => {
   try {
-    const { userAddress, totalAmount, amountPerInterval, intervalSeconds, totalOperations } = req.body;
+    const { userAddress, toToken, totalAmount, amountPerInterval, intervalSeconds, totalOperations } = req.body;
     
     // Validaciones
-    if (!userAddress || !totalAmount || !amountPerInterval || !intervalSeconds || !totalOperations) {
+    if (!userAddress || !toToken || !totalAmount || !amountPerInterval || !intervalSeconds || !totalOperations) {
       return res.status(400).json({ 
         success: false, 
         message: "Faltan parámetros requeridos" 
@@ -62,6 +75,7 @@ router.post("/create-on-chain", async (req, res) => {
     // Crear plan on-chain y obtener contractId
     const result = await dcaService.createPlanOnChain({
       userAddress,
+      toToken,  // NEW: Pass selected token
       totalAmount,
       amountPerInterval,
       intervalSeconds,
@@ -74,7 +88,7 @@ router.post("/create-on-chain", async (req, res) => {
       message: "Plan creado exitosamente on-chain y sincronizado con DB"
     });
   } catch (err: any) {
-    console.error("[API] Error creating plan on-chain:", err);
+    logger.error("[API] Error creating plan on-chain:", { error: err.message });
     res.status(500).json({ success: false, message: err.message });
   }
 });

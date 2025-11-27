@@ -41,15 +41,15 @@ export const startServer = async (): Promise<void> => {
 
     const io = initSocketServer(server);
     io.on("connection", (socket) => {
-      logger.info(`🟢 Socket connected: ${socket.id}`);
+      logger.info(`🟢 Socket connected: ${socket.id}`, { service: 'System', method: 'Socket' });
 
       socket.on("subscribeToWallet", (wallet: string) => {
         socket.join(wallet);
-        logger.info(`👤 Wallet subscribed: ${wallet}`);
+        logger.info(`👤 Wallet subscribed: ${wallet}`, { service: 'System', method: 'Socket' });
       });
 
       socket.on("disconnect", () =>
-        logger.info(`🔴 Socket disconnected: ${socket.id}`)
+        logger.info(`🔴 Socket disconnected: ${socket.id}`, { service: 'System', method: 'Socket' })
       );
     });
 
@@ -63,20 +63,20 @@ export const startServer = async (): Promise<void> => {
     // 🔹 DCA Worker (procesa ejecuciones)
     // ==========================
     dcaWorker.on("completed", (job) => {
-      console.log(`✅ Job ${job.id} completed`);
+      logger.info(`✅ Job ${job.id} completed`, { service: 'System', method: 'Worker' });
     });
 
     dcaWorker.on("failed", (job, err) => {
-      console.error(`❌ Job ${job?.id} failed: ${err.message}`);
+      logger.error(`❌ Job ${job?.id} failed: ${err.message}`, { service: 'System', method: 'Worker' });
     });
 
     const PORT = process.env.PORT || 4000;
     server.listen(PORT, () => {
-      logger.info(`🚀 Server running at http://localhost:${PORT}`);
-      logger.info(`📘 Swagger docs: http://localhost:${PORT}/docs`);
+      logger.info(`🚀 Server running at http://localhost:${PORT}`, { service: 'System', method: 'Server' });
+      logger.info(`📘 Swagger docs: http://localhost:${PORT}/docs`, { service: 'System', method: 'Server' });
     });
   } catch (err: any) {
-    logger.error(`❌ Error during server startup: ${err.message}`);
+    logger.error(`❌ Error during server startup: ${err.message}`, { service: 'System', method: 'Server' });
     process.exit(1);
   }
 };

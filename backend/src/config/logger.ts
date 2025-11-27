@@ -30,33 +30,49 @@ const colors = {
 };
 
 class Logger {
-  private formatMessage(level: string, msg: string, context?: LoggerContext, color?: string): string {
+  // Service-specific colors
+  private getServiceColor(service?: string): string {
+    switch (service) {
+      case 'TreasuryService': return colors.yellow;
+      case 'DCAService': return colors.cyan;
+      case 'System': return colors.green;
+      default: return colors.reset;
+    }
+  }
+
+  private formatMessage(level: string, msg: string, context?: LoggerContext, defaultColor?: string): string {
     const timestamp = new Date().toISOString();
     const contextStr = context 
       ? `${colors.gray}[${context.service || 'System'}${context.method ? `::${context.method}` : ''}]${colors.reset}` 
       : '';
     
-    const levelColor = color || colors.reset;
+    // Determine color: Priority 1: Service Color, Priority 2: Level Default
+    const msgColor = context?.service ? this.getServiceColor(context.service) : (defaultColor || colors.reset);
+    
+    const levelColor = defaultColor || colors.reset;
     const levelLabel = `${levelColor}${colors.bright}[${level}]${colors.reset}`;
     const timeLabel = `${colors.dim}${timestamp}${colors.reset}`;
     
-    return `${levelLabel} ${timeLabel} ${contextStr} ${color || ''}${msg}${colors.reset}`;
+    return `${levelLabel} ${timeLabel} ${contextStr} ${msgColor}${msg}${colors.reset}`;
   }
 
   info(msg: string, context?: LoggerContext) {
-    console.log(this.formatMessage('INFO', msg, context, colors.cyan));
+    // Default INFO color is blue/cyan, but service color overrides message content
+    console.log(this.formatMessage('INFO', msg, context, colors.blue));
   }
 
   error(msg: string, context?: LoggerContext) {
-    console.error(this.formatMessage('ERROR', msg, context, colors.red));
+    console.log(this.formatMessage('ERROR', msg, context, colors.red));
   }
 
   warn(msg: string, context?: LoggerContext) {
-    console.warn(this.formatMessage('WARN', msg, context, colors.yellow));
+    console.log(this.formatMessage('WARN', msg, context, colors.yellow));
   }
 
   debug(msg: string, context?: LoggerContext) {
-    console.debug(this.formatMessage('DEBUG', msg, context, colors.gray));
+    if (process.env.DEBUG) {
+      console.log(this.formatMessage('DEBUG', msg, context, colors.magenta));
+    }
   }
   
   success(msg: string, context?: LoggerContext) {
