@@ -27,4 +27,18 @@ export const pt = {
         created: "🚀 Plano criado com sucesso na blockchain",
         error: "❌ Erro: ",
     },
+    features: {
+        nonCustodial: {
+            title: "Non-Custodial",
+            description: "Seus fundos sempre sob seu controle. Smart contracts verificados."
+        },
+        automated: {
+            title: "Automatizado",
+            description: "Compras automáticas de acordo com sua estratégia. Sem intervenção manual."
+        },
+        transparent: {
+            title: "Transparente",
+            description: "Histórico completo on-chain. Rastreabilidade total das operações."
+        }
+    }
 };
