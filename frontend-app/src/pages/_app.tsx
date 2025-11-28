@@ -1,7 +1,7 @@
 import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import { WagmiProvider, http } from "wagmi";
-import { polygon } from "wagmi/chains";
+import { polygon, sepolia } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   getDefaultConfig,
@@ -13,9 +13,10 @@ import "@rainbow-me/rainbowkit/styles.css";
 const config = getDefaultConfig({
   appName: "DCA Dashboard",
   projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
-  chains: [polygon],
+  chains: [polygon, sepolia],
   transports: {
     [polygon.id]: http(process.env.NEXT_PUBLIC_RPC_URL!),
+    [sepolia.id]: http(process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA!),
   },
 });
 
