@@ -5,7 +5,7 @@
   "main": "src/index.ts",
   "license": "MIT",
   "scripts": {
-    "dev": "NODE_OPTIONS='--loader tsx' tsx src/index.ts",
+    "dev": "tsx src/index.ts",
     "build": "tsc",
     "start": "node src/index.ts",
     "test": "jest --runInBand --verbose",
