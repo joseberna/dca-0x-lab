@@ -116,8 +116,24 @@ export default function DCAPlanForm() {
       // await axios.post('/api/dca/sync', { txHash: tx });
 
     } catch (err: any) {
-      console.error(err);
-      setStatus(`${t.status.error}${err.shortMessage || err.message}`);
+      console.error("Transaction error:", err);
+      
+      // Better error messages for users
+      let errorMessage = "";
+      
+      if (err.message?.includes("underpriced")) {
+        errorMessage = "⚠️ Gas price muy bajo. Por favor, cancela las transacciones pendientes en Metamask e intenta de nuevo.";
+      } else if (err.message?.includes("insufficient funds")) {
+        errorMessage = "💰 Fondos insuficientes para gas. Necesitas más ETH en tu wallet.";
+      } else if (err.message?.includes("User rejected") || err.code === 4001) {
+        errorMessage = "❌ Transacción cancelada por el usuario.";
+      } else if (err.message?.includes("nonce")) {
+        errorMessage = "⚠️ Error de nonce. Resetea tu cuenta en Metamask (Configuración > Avanzado > Resetear cuenta).";
+      } else {
+        errorMessage = err.shortMessage || err.message || "Error desconocido";
+      }
+      
+      setStatus(`${t.status.error}${errorMessage}`);
     } finally {
       setLoading(false);
     }
