@@ -1,57 +1,120 @@
-# Sample Hardhat 3 Beta Project (`mocha` and `ethers`)
+# ⛓️ DCA 0x Lab Smart Contracts
 
-This project showcases a Hardhat 3 Beta project using `mocha` for tests and the `ethers` library for Ethereum interactions.
+Colección de contratos inteligentes en Solidity para el protocolo de Dollar Cost Averaging (DCA). Diseñados para ser modulares, seguros y eficientes en gas.
 
-To learn more about the Hardhat 3 Beta, please visit the [Getting Started guide](https://hardhat.org/docs/getting-started#getting-started-with-hardhat-3). To share your feedback, join our [Hardhat 3 Beta](https://hardhat.org/hardhat3-beta-telegram-group) Telegram group or [open an issue](https://github.com/NomicFoundation/hardhat/issues/new) in our GitHub issue tracker.
+---
 
-## Project Overview
+## 📜 Contratos Principales
 
-This example project includes:
+### 1. `DCAAccountingV2.sol`
+El núcleo del protocolo. Gestiona:
+- Creación y almacenamiento de planes DCA.
+- Ejecución de "ticks" (compras periódicas).
+- Cálculo de swaps y gestión de balances internos.
+- Emisión de eventos para trazabilidad off-chain.
 
-- A simple Hardhat configuration file.
-- Foundry-compatible Solidity unit tests.
-- TypeScript integration tests using `mocha` and ethers.js
-- Examples demonstrating how to connect to different types of networks, including locally simulating OP mainnet.
+### 2. `GenericVault.sol`
+Bóvedas seguras para custodiar los activos de los usuarios y del protocolo.
+- **UserVault**: Custodia los fondos de los usuarios.
+- **TreasuryVault**: Custodia la liquidez del protocolo para realizar los swaps.
 
-## Usage
+### 3. `TokenRegistry.sol`
+Registro centralizado de tokens soportados, sus oráculos de precio y configuraciones (decimales, direcciones).
 
-### Running Tests
+---
 
-To run all the tests in the project, execute the following command:
+## 🛠 Instalación y Compilación
 
-```shell
+### Prerrequisitos
+- Node.js v18+
+- Hardhat
+
+### Instalación
+```bash
+cd contracts
+yarn install
+```
+
+### Compilación
+```bash
+npx hardhat compile
+```
+
+---
+
+## 🚀 Despliegue
+
+El proyecto utiliza scripts de Hardhat para el despliegue. El script principal es `deployMultiToken.js`, que maneja el despliegue de todo el ecosistema (Registry, Vaults, Accounting, Mocks).
+
+### Desplegar en Sepolia (Testnet)
+```bash
+npx hardhat run scripts/deployMultiToken.js --network sepolia
+```
+
+### Desplegar en Polygon (Mainnet)
+```bash
+npx hardhat run scripts/deployMultiToken.js --network polygon
+```
+
+> **Nota**: Asegúrate de configurar las variables de entorno en `.env` (ver sección de configuración).
+
+---
+
+## ✅ Verificación
+
+Para verificar los contratos en Etherscan o PolygonScan:
+
+```bash
+npx hardhat verify --network sepolia <CONTRACT_ADDRESS> <CONSTRUCTOR_ARGS>
+```
+
+Ejemplo:
+```bash
+npx hardhat verify --network sepolia 0x123... "0xArg1..." "0xArg2..."
+```
+
+---
+
+## 🧪 Testing
+
+Ejecutar la suite de pruebas (Hardhat + Ethers.js):
+
+```bash
 npx hardhat test
 ```
 
-You can also selectively run the Solidity or `mocha` tests:
+---
 
-```shell
-npx hardhat test solidity
-npx hardhat test mocha
+## ⚙️ Configuración (.env)
+
+Crea un archivo `.env` en `contracts/` con:
+
+```env
+# 🔑 Private Keys
+PRIVATE_KEY=0x...
+
+# 🌐 RPC URLs
+RPC_URL_SEPOLIA=https://eth-sepolia.g.alchemy.com/v2/...
+RPC_URL_POLYGON=https://polygon-rpc.com
+
+# 🔎 API Keys (Verificación)
+ETHERSCAN_API_KEY=...
+POLYGONSCAN_API_KEY=...
 ```
 
-### Make a deployment to Sepolia
+---
 
-This project includes an example Ignition module to deploy the contract. You can deploy this module to a locally simulated chain or to Sepolia.
+## 📦 Direcciones Desplegadas (Referencia)
 
-To run the deployment to a local chain:
+| Contrato | Red | Dirección |
+|----------|-----|-----------|
+| DCAAccountingV2 | Sepolia | `0x...` (Ver logs de despliegue) |
+| TokenRegistry | Sepolia | `0x...` |
+| MockUSDC | Sepolia | `0x...` |
 
-```shell
-npx hardhat ignition deploy ignition/modules/Counter.ts
-```
+---
 
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
+## 👨‍💻 Desarrollador
 
-You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
-
-To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
-
-```shell
-npx hardhat keystore set SEPOLIA_PRIVATE_KEY
-```
-
-After setting the variable, you can run the deployment with the Sepolia network:
-
-```shell
-npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
-```
+**José Fernando Berna**
+*Blockchain Engineer & Full Stack Developer*

@@ -1,22 +1,188 @@
-```typescript
 import { Router } from "express";
 import { DCAService } from "../../../application/services/DCAService.ts";
 import { DCAPlanRepository } from "../../../domain/repositories/dcaPlan.repository.ts";
 import { DCAExecutionRepository } from "../../../domain/repositories/dcaExecution.repository.ts";
 import { io } from "../../sockets/socketServer.ts";
 import logger from "../../../config/logger.ts";
+import { DCAAdminController } from "../controllers/DCAAdminController.ts";
+import { DCAUserController } from "../controllers/DCAUserController.ts";
 
 const router = Router();
 const dcaService = new DCAService();
 const planRepo = new DCAPlanRepository();
 const execRepo = new DCAExecutionRepository();
 
+// ============================================================================
+// 👮 ADMIN ROUTES (Trazabilidad Global)
+// ============================================================================
+
+/**
+ * @openapi
+ * /api/dca/admin/plans:
+ *   get:
+ *     summary: 👮 [Admin] Listar todos los planes DCA (Paginado)
+ *     tags: [DCA Admin]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, completed, paused, failed]
+ *       - in: query
+ *         name: userAddress
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Lista de planes paginada
+ */
+router.get("/admin/plans", DCAAdminController.getAllPlans);
+
+/**
+ * @openapi
+ * /api/dca/admin/plans/{planId}:
+ *   get:
+ *     summary: 👮 [Admin] Ver detalle completo de un plan y sus ejecuciones
+ *     tags: [DCA Admin]
+ *     parameters:
+ *       - in: path
+ *         name: planId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Detalle del plan con historial
+ */
+router.get("/admin/plans/:planId", DCAAdminController.getPlanDetails);
+
+/**
+ * @openapi
+ * /api/dca/admin/executions:
+ *   get:
+ *     summary: 👮 [Admin] Trazabilidad global de ejecuciones (Ticks)
+ *     tags: [DCA Admin]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [success, failed, pending]
+ *       - in: query
+ *         name: planId
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Historial global de ejecuciones
+ */
+router.get("/admin/executions", DCAAdminController.getAllExecutions);
+
+
+// ============================================================================
+// 👤 USER ROUTES (Mi Historial)
+// ============================================================================
+
+/**
+ * @openapi
+ * /api/dca/my-plans/{userAddress}:
+ *   get:
+ *     summary: 👤 [User] Ver mis planes DCA
+ *     tags: [DCA User]
+ *     parameters:
+ *       - in: path
+ *         name: userAddress
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Mis planes
+ */
+router.get("/my-plans/:userAddress", DCAUserController.getMyPlans);
+
+/**
+ * @openapi
+ * /api/dca/my-plans/{userAddress}/{planId}:
+ *   get:
+ *     summary: 👤 [User] Ver detalle de mi plan
+ *     tags: [DCA User]
+ *     parameters:
+ *       - in: path
+ *         name: userAddress
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: planId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Detalle de mi plan
+ */
+router.get("/my-plans/:userAddress/:planId", DCAUserController.getMyPlanDetails);
+
+/**
+ * @openapi
+ * /api/dca/my-executions/{userAddress}:
+ *   get:
+ *     summary: 👤 [User] Ver mi historial de ejecuciones (Ticks)
+ *     tags: [DCA User]
+ *     parameters:
+ *       - in: path
+ *         name: userAddress
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *     responses:
+ *       200:
+ *         description: Mi historial de ejecuciones
+ */
+router.get("/my-executions/:userAddress", DCAUserController.getMyExecutions);
+
+
+// ============================================================================
+// ⚙️ CORE ROUTES (Creación y Gestión)
+// ============================================================================
+
 /**
  * @openapi
  * /api/dca/create-on-chain:
  *   post:
  *     summary: Crea un plan DCA directamente en blockchain y sincroniza con DB
- *     tags: [DCA]
+ *     tags: [DCA Core]
  *     requestBody:
  *       required: true
  *       content:
@@ -34,48 +200,39 @@ const execRepo = new DCAExecutionRepository();
  *               userAddress:
  *                 type: string
  *                 example: "0x0C1ee65e59Cd82C1C6FF3bc0d5E612190F45264D"
- *                 description: Dirección del usuario
  *               toToken:
  *                 type: string
  *                 enum: [WETH, WBTC, SOL]
  *                 example: "WETH"
- *                 description: Token destino (WETH, WBTC, SOL)
  *               totalAmount:
  *                 type: number
- *                 example: 300000000
- *                 description: Monto total en USDC (6 decimals) - 300000000 = 300 USDC
+ *                 example: 300
+ *                 description: Monto total en USDC (ej. 300)
  *               amountPerInterval:
  *                 type: number
- *                 example: 100000000
- *                 description: USDC por tick (6 decimals) - 100000000 = 100 USDC
+ *                 example: 100
+ *                 description: Monto por tick en USDC (ej. 100)
  *               intervalSeconds:
  *                 type: number
- *                 example: 120
- *                 description: Intervalo en segundos entre ticks
+ *                 example: 60
  *               totalOperations:
  *                 type: number
  *                 example: 3
- *                 description: Número total de operaciones
  *     responses:
  *       201:
- *         description: Plan creado exitosamente on-chain y en DB
+ *         description: Plan creado exitosamente
  */
 router.post("/create-on-chain", async (req, res) => {
   try {
     const { userAddress, toToken, totalAmount, amountPerInterval, intervalSeconds, totalOperations } = req.body;
     
-    // Validaciones
     if (!userAddress || !toToken || !totalAmount || !amountPerInterval || !intervalSeconds || !totalOperations) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Faltan parámetros requeridos" 
-      });
+      return res.status(400).json({ success: false, message: "Faltan parámetros requeridos" });
     }
 
-    // Crear plan on-chain y obtener contractId
     const result = await dcaService.createPlanOnChain({
       userAddress,
-      toToken,  // NEW: Pass selected token
+      toToken,
       totalAmount,
       amountPerInterval,
       intervalSeconds,
@@ -95,111 +252,23 @@ router.post("/create-on-chain", async (req, res) => {
 
 /**
  * @openapi
- * /api/dca:
- *   post:
- *     summary: Crea un nuevo plan DCA (solo en DB, legacy)
- *     tags: [DCA]
+ * /api/dca/{planId}:
+ *   put:
+ *     summary: Actualiza un plan DCA (Pausar/Reanudar)
+ *     tags: [DCA Core]
+ *     parameters:
+ *       - in: path
+ *         name: planId
+ *         required: true
  *     requestBody:
- *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
  *             properties:
- *               userAddress:
+ *               status:
  *                 type: string
- *               tokenFrom:
- *                 type: string
- *               tokenTo:
- *                 type: string
- *               amountPerInterval:
- *                 type: number
- *               intervalDays:
- *                 type: number
- *               totalOperations:
- *                 type: number
- *     responses:
- *       201:
- *         description: Plan creado exitosamente
- */
-router.post("/", async (req, res) => {
-  try {
-    // Create DCA plan request received
-    const plan = await planRepo.create(req.body);
-    io.emit("dca:created", plan);
-    res.status(201).json({ success: true, data: plan });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-/**
- * @openapi
- * /api/dca/wallet/{walletAddress}:
- *   get:
- *     summary: Obtiene todos los planes DCA de una wallet
- *     tags: [DCA]
- *     parameters:
- *       - in: path
- *         name: walletAddress
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Lista de planes DCA
- */
-router.get("/wallet/:walletAddress", async (req, res) => {
-  try {
-    const plans = await planRepo.findByUser(req.params.walletAddress);
-    res.json({ success: true, data: plans });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-/**
- * @openapi
- * /api/dca/{planId}:
- *   get:
- *     summary: Obtiene el detalle de un plan DCA
- *     tags: [DCA]
- *     parameters:
- *       - in: path
- *         name: planId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Detalle del plan
- */
-router.get("/:planId", async (req, res) => {
-  try {
-    const plan = await planRepo.findById(req.params.planId);
-    if (!plan) return res.status(404).json({ success: false, message: "Plan no encontrado" });
-    res.json({ success: true, data: plan });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-/**
- * @openapi
- * /api/dca/{planId}:
- *   put:
- *     summary: Actualiza un plan DCA
- *     tags: [DCA]
- *     parameters:
- *       - in: path
- *         name: planId
- *         required: true
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
+ *                 enum: [active, paused]
  *     responses:
  *       200:
  *         description: Plan actualizado
@@ -219,7 +288,7 @@ router.put("/:planId", async (req, res) => {
  * /api/dca/{planId}:
  *   delete:
  *     summary: Elimina un plan DCA
- *     tags: [DCA]
+ *     tags: [DCA Core]
  */
 router.delete("/:planId", async (req, res) => {
   try {
@@ -231,33 +300,21 @@ router.delete("/:planId", async (req, res) => {
   }
 });
 
-/**
- * @openapi
- * /api/dca/{planId}/executions:
- *   get:
- *     summary: Obtiene las transacciones (ejecuciones) de un plan
- *     tags: [DCA]
- */
-router.get("/:planId/executions", async (req, res) => {
+// Legacy routes (mantener por compatibilidad si es necesario)
+router.get("/wallet/:walletAddress", async (req, res) => {
   try {
-    const execs = await execRepo.findByPlan(req.params.planId);
-    res.json({ success: true, data: execs });
+    const plans = await planRepo.findByUser(req.params.walletAddress);
+    res.json({ success: true, data: plans });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-/**
- * @openapi
- * /api/dca/execute:
- *   post:
- *     summary: Ejecuta todos los planes activos manualmente
- *     tags: [DCA]
- */
-router.post("/execute", async (req, res) => {
+router.get("/:planId", async (req, res) => {
   try {
-    await dcaService.executePlans();
-    res.json({ success: true, message: "Ejecución DCA iniciada" });
+    const plan = await planRepo.findById(req.params.planId);
+    if (!plan) return res.status(404).json({ success: false, message: "Plan no encontrado" });
+    res.json({ success: true, data: plan });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }

@@ -141,7 +141,7 @@ export class DCAPlanRepository {
 
     // Permitir override manual de status e isActive
     if (data.status !== undefined) {
-      plan.status = data.status;
+      plan.status = data.status as any;
     }
     if (data.isActive !== undefined) {
       plan.isActive = data.isActive;
@@ -155,5 +155,30 @@ export class DCAPlanRepository {
     );
 
     return await plan.save();
+  }
+
+
+  /**
+   * 🔍 Admin: Listar todos los planes con paginación
+   */
+  async findAll(page: number = 1, limit: number = 10, filter: any = {}) {
+    try {
+      const skip = (page - 1) * limit;
+      return await DCAPlanModel.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+    } catch (err: any) {
+      logger.error(`❌ Error listando todos los planes: ${err.message}`);
+      throw err;
+    }
+  }
+
+  /**
+   * 🔢 Admin: Contar total de planes (para paginación)
+   */
+  async countAll(filter: any = {}) {
+    return await DCAPlanModel.countDocuments(filter);
   }
 }

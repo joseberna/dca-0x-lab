@@ -1,190 +1,146 @@
-# 💸 PoC DCA Backend — Dollar Cost Averaging Automation
+# 💸 DCA 0x Lab Backend
 
-Backend desarrollado en **Node.js + TypeScript + MongoDB + Socket.IO** para gestionar y automatizar planes DCA (Dollar Cost Averaging) sobre la red **Polygon**, con integraciones reales a **1inch API**, ejecución programada vía **cron jobs**, y trazabilidad completa mediante logs y eventos en tiempo real.
+Backend robusto y escalable desarrollado en **Node.js + TypeScript** para gestionar y automatizar planes DCA (Dollar Cost Averaging) en redes EVM (Sepolia, Polygon).
+
+Cuenta con una arquitectura orientada a eventos, colas de tareas distribuidas con **Redis + BullMQ**, persistencia en **MongoDB**, y trazabilidad completa on-chain y off-chain.
 
 ---
 
-## 🧩 Arquitectura del proyecto
+## 🧩 Arquitectura
 
-El sistema sigue una estructura **Clean Architecture**, separando responsabilidades claramente:
+El sistema sigue una estructura **Clean Architecture** y **Hexagonal**, separando responsabilidades:
 
 ```
 backend/
 ├── src/
-│   ├── application/         # Casos de uso y servicios (DCAService, DCAInitService)
-│   ├── config/              # Logger, Swagger, configuración general
-│   ├── domain/              # Entidades, modelos y repositorios (Mongo)
-│   │   ├── entities/        # Interfaces de negocio (DCAPlan, DCAExecution, Wallet)
-│   │   ├── models/          # Esquemas Mongoose
-│   │   └── repositories/    # Repositorios para persistencia
-│   ├── infraestructure/     # Adaptadores externos (API, DB, Sockets, 1inch, Blockchain)
-│   │   ├── api/             # Servidor Express + rutas y controladores
-│   │   ├── blockchain/      # Envío de transacciones a la red
-│   │   ├── integrations/    # 1inch API y servicios externos
-│   │   ├── sockets/         # Servidor y eventos Socket.IO
-│   │   └── database/        # Conexión MongoDB Atlas
-│   ├── tests/               # Pruebas unitarias e integradas con Jest
-│   └── index.ts             # Entry point principal
+│   ├── application/         # Casos de uso y servicios (DCAService, TreasuryService)
+│   ├── config/              # Configuración (Logger, Redis, Swagger, Networks)
+│   ├── domain/              # Entidades, modelos y repositorios
+│   │   ├── models/          # Esquemas Mongoose (DCAPlan, DCAExecution)
+│   │   └── repositories/    # Abstracción de datos
+│   ├── infraestructure/     # Adaptadores externos
+│   │   ├── api/             # API REST (Express) + Controladores
+│   │   ├── blockchain/      # Interacción con Smart Contracts (Ethers.js)
+│   │   ├── database/        # Conexión MongoDB Atlas
+│   │   ├── jobs/            # Sistema de colas y workers (BullMQ)
+│   │   │   ├── queues/      # Definición de colas
+│   │   │   ├── scheduler/   # Cron jobs y planificadores
+│   │   │   └── workers/     # Procesadores de tareas en segundo plano
+│   │   └── sockets/         # Eventos en tiempo real (Socket.IO)
+│   └── __tests__/           # Pruebas unitarias e integradas (Jest)
 ```
 
 ---
 
-## 🚀 Funcionalidades principales
+## 🚀 Funcionalidades Principales
 
-✅ Creación automática de un plan DCA base desde `.env` (vía `DCAInitService`)
-✅ Ejecución periódica de planes activos con `node-cron`
-✅ Integración con **1inch API** para simular swaps reales en Polygon
-✅ Persistencia en **MongoDB Atlas** (planes, ejecuciones, wallets)
-✅ Emisión de eventos en tiempo real con **Socket.IO** (`dca:executed`, `wallet:created`, etc.)
-✅ Documentación automática con **Swagger** (`/docs`)
-✅ Pruebas unitarias e integradas con **Jest + ts-jest**
+✅ **Gestión de Planes DCA**: Creación, pausa, cancelación y consulta de planes.
+✅ **Ejecución Distribuida**: Uso de **BullMQ + Redis Cloud** para procesar ejecuciones de manera fiable y escalable.
+✅ **Trazabilidad Completa**: Registro detallado de cada "tick" (ejecución) tanto en DB como en Blockchain.
+✅ **Panel de Administración**: Endpoints específicos para monitoreo global de planes y ejecuciones.
+✅ **Tesorería Automatizada**: Bots (`TreasuryService`) que monitorean y recargan liquidez automáticamente.
+✅ **Multi-Network**: Soporte configurado para Sepolia y Polygon.
+✅ **Documentación API**: Swagger UI integrado.
 
 ---
 
-## ⚙️ Instalación y configuración
+## ⚙️ Instalación y Configuración
 
-### 1️⃣ Clonar el proyecto
-```bash
-git clone https://github.com/joseberna/dca-0x-lab.git
-cd dca-0x-lab/backend
-```
+### 1️⃣ Prerrequisitos
+- Node.js v18+
+- Yarn
+- MongoDB Atlas (o local)
+- Redis Cloud (o local)
 
-### 2️⃣ Instalar dependencias
+### 2️⃣ Instalación
 ```bash
+cd backend
 yarn install
 ```
 
-### 3️⃣ Configurar entorno `.env`
-Ejemplo:
+### 3️⃣ Variables de Entorno (.env)
+Crea un archivo `.env` en la raíz de `backend/` con las siguientes variables:
+
 ```env
+# ⚙️ Servidor
 PORT=4000
-MONGO_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/dca-lab
-CHAIN_RPC_URL=https://polygon-rpc.com
-PRIVATE_KEY=0x<PRIVATE_KEY>
+SCHEDULER_INTERVAL=60000
 
-# Plan DCA inicial
-dca_wallet=0x8B2733Ea0AaD06Cb02307B1aa0c88385dd037BB0
-DCA_BUDGET_USDC=100
-DCA_TOTAL_OPERATIONS=4
-DCA_INTERVAL_DAYS=7
-DCA_TOKEN_FROM=USDC
-DCA_TOKEN_TO=WBTC
+# 🔐 Base de Datos
+MONGO_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/dca-prod
+REDIS_URL=redis://default:<pass>@<host>:<port>
 
-# 1inch API
-ONEINCH_API_BASE=https://api.1inch.dev/swap/v6.0/137
-ONEINCH_API_KEY=<API_KEY>
+# 🌐 Blockchain (Sepolia / Polygon)
+ACTIVE_NETWORK=sepolia
+RPC_URL_SEPOLIA=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
+RPC_URL_POLYGON=https://polygon-rpc.com
 
-# Tokens mock en Polygon
-SC_USDC_POLYGON=0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359
-MOCK_WBTC_ADDRESS=0x1bfd67037b42cf73acf2047067bd4f2c47d9bfd6
+# 🔑 Private Keys (Admin & Treasury)
+PRIVATE_KEY=0x...
+TREASURY_PRIVATE_KEY=0x...
+
+# 📍 Smart Contracts (Actualizados)
+SEPOLIA_ACCOUNTING=0x...
+SEPOLIA_REGISTRY=0x...
 ```
 
-### 4️⃣ Ejecutar en desarrollo
+### 4️⃣ Ejecutar en Desarrollo
 ```bash
 yarn dev
 ```
-
-Servidor en: **http://localhost:4000**  
-Swagger docs: **http://localhost:4000/docs**
+El servidor iniciará en `http://localhost:4000`.
 
 ---
 
-## 🧠 Endpoints disponibles (Swagger)
+## 📚 Documentación API (Swagger)
 
-| Método | Endpoint | Descripción |
-|--------|-----------|-------------|
-| `POST` | `/api/wallets` | Crea o recupera una wallet |
-| `GET`  | `/api/wallets` | Lista todas las wallets registradas |
-| `DELETE` | `/api/wallets/:address` | Elimina una wallet |
-| `POST` | `/api/dca` | Crea un nuevo plan DCA |
-| `GET`  | `/api/dca/wallet/:walletAddress` | Obtiene todos los planes DCA de una wallet |
-| `GET`  | `/api/dca/:planId` | Detalle de un plan DCA |
-| `PUT`  | `/api/dca/:planId` | Actualiza un plan |
-| `DELETE` | `/api/dca/:planId` | Elimina un plan DCA |
-| `GET`  | `/api/dca/:planId/executions` | Obtiene las ejecuciones de un plan |
-| `POST` | `/api/dca/execute` | Ejecuta manualmente todos los planes activos |
+Una vez iniciado el servidor, visita:
+👉 **http://localhost:4000/docs**
 
----
+### Endpoints Clave:
 
-## 🔄 Eventos en tiempo real (Socket.IO)
+#### 👮 Admin (Trazabilidad)
+- `GET /api/dca/admin/plans`: Listar todos los planes (paginado).
+- `GET /api/dca/admin/executions`: Ver historial global de ejecuciones.
+- `GET /api/dca/admin/plans/{planId}`: Detalle profundo de un plan.
 
-| Evento | Emisor | Descripción |
-|---------|---------|-------------|
-| `wallet:created` | `wallet.controller.ts` | Nueva wallet registrada |
-| `wallet:deleted` | `wallet.controller.ts` | Wallet eliminada |
-| `dca:executed` | `DCAService.ts` | Un plan DCA fue ejecutado exitosamente |
+#### 👤 Usuario
+- `GET /api/dca/my-plans/{userAddress}`: Ver mis planes.
+- `GET /api/dca/my-executions/{userAddress}`: Ver mi historial.
 
-### Escuchar desde el frontend:
-```js
-const socket = io("http://localhost:4000");
-
-socket.on("connect", () => console.log("✅ Conectado al backend DCA"));
-socket.on("wallet:created", data => console.log("Nueva wallet:", data));
-socket.on("dca:executed", data => console.log("DCA ejecutado:", data));
-```
+#### ⚙️ Core
+- `POST /api/dca/create-on-chain`: Crear nuevo plan DCA.
+- `PUT /api/dca/{planId}`: Pausar/Reanudar plan.
 
 ---
 
-## 🧪 Pruebas
+## 🧪 Testing
 
-Ejecutar las pruebas unitarias e integradas:
+El proyecto cuenta con una suite de pruebas unitarias usando **Jest**.
+
 ```bash
-yarn jest --runInBand --verbose
-```
+# Ejecutar todos los tests
+yarn test
 
-Todas las pruebas se ubican en `/tests/`:
-- `unit/` → Lógica individual (1inch, DCAService, etc.)
-- `integration/` → Flujos completos (createPlan, sendTransaction)
+# Ejecutar tests específicos
+yarn jest src/__tests__/controllers/DCAAdminController.test.ts
+```
 
 ---
 
-## 📡 Cron Job de ejecución automática
+## 🛠 Stack Tecnológico
 
-El backend ejecuta el chequeo cada 30 segundos:
-```ts
-nodeCron.schedule("*/30 * * * * *", async () => {
-  logger.info("⏱ Running scheduled DCA check...");
-  const dcaService = new DCAService();
-  await dcaService.executePlans();
-});
-```
-
-Esto valida si el intervalo del plan se ha cumplido y ejecuta el swap vía 1inch.
-
----
-
-## 🧱 Tecnologías principales
-
-| Componente | Tecnología |
-|-------------|-------------|
-| Runtime | Node.js 22 + ts-node ESM |
-| Lenguaje | TypeScript |
-| Framework web | Express.js |
-| Base de datos | MongoDB Atlas + Mongoose |
-| Blockchain | ethers.js + 1inch API (Polygon) |
-| WebSockets | Socket.IO |
-| Scheduler | node-cron |
-| Testing | Jest + ts-jest |
-| Documentación | Swagger (OAS 3.0) |
+- **Runtime**: Node.js + TypeScript
+- **Framework**: Express.js
+- **DB**: MongoDB (Mongoose)
+- **Queue**: BullMQ + Redis
+- **Blockchain**: Ethers.js v5
+- **Testing**: Jest
+- **Docs**: Swagger (OpenAPI 3.0)
 
 ---
 
 ## 👨‍💻 Desarrollador
-**José Fernando Berna**  
-Blockchain Engineer & Full Stack Developer  
-📍 Cali, Colombia  
-🔗 [linkedin.com/in/josefberna](https://linkedin.com/in/josefberna)
 
----
-
-## 🧭 Próximos pasos
-
-✅ Integrar el frontend (React / Next.js) con sockets para monitoreo en tiempo real  
-✅ Dashboard para visualizar ejecuciones DCA, wallets activas y swaps confirmados  
-✅ Migración de cron local → AWS EventBridge / Lambda Scheduler para producción  
-✅ Integración de wallets Web3 (Metamask / WalletConnect)
-
----
-
-> 💡 Este backend fue diseñado con enfoque **escalable, modular y extensible**, preparado para integrarse con un frontend en tiempo real y futuras expansiones DeFi (staking, yield farming, etc.).
-
+**José Fernando Berna**
+*Blockchain Engineer & Full Stack Developer*

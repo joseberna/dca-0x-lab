@@ -5,7 +5,7 @@ import { DCAService } from "../../../application/services/DCAService.ts";
 import { redisConnection } from "../../../config/redis.ts";
 import logger from "../../../config/logger.ts";
 
-const connection = new IORedis(process.env.REDIS_URL!);
+
 const dcaService = new DCAService();
 const planRepository = new DCAPlanRepository();
 
@@ -50,11 +50,7 @@ export const dcaWorker = new Worker(
     }
   },
   {
-    connection: {
-      ...redisConnection,          // si ya exportas un objeto base con host/port
-      maxRetriesPerRequest: null,  // 👈 Obligatorio para BullMQ
-      enableReadyCheck: false,     // 👈 Evita bloqueos en modo cluster
-    },
+    connection: redisConnection,
   }
 );
 

@@ -11,21 +11,21 @@ dotenv.config();
  * ✅ Verificar conexión a Redis antes de iniciar el servidor
  */
 async function checkRedisConnection(): Promise<void> {
-  const client = new IORedis({
-    host: process.env.REDIS_HOST || "127.0.0.1",
-    port: Number(process.env.REDIS_PORT) || 6379,
-    maxRetriesPerRequest: null, // requerido por BullMQ
+  logger.info("Checking Redis connection...", { service: 'System', method: 'Redis' });
+  const redisConnection = new IORedis(process.env.REDIS_URL!, {
+    maxRetriesPerRequest: null,
     enableReadyCheck: false,
   });
+  logger.info("Redis redisConnection: " + redisConnection, { service: 'System', method: 'Redis' });
 
   try {
-    await client.ping();
+    await redisConnection.ping();
     logger.info("✅ Redis connection successful", { service: 'System', method: 'Redis' });
   } catch (error: any) {
     logger.error(`❌ Redis connection failed: ${error.message}`, { service: 'System', method: 'Redis' });
     throw error;
   } finally {
-    client.disconnect();
+    redisConnection.disconnect();
   }
 }
 
@@ -34,7 +34,7 @@ async function checkRedisConnection(): Promise<void> {
  */
 async function bootstrap(): Promise<void> {
   try {
-    logger.info("🚀 Starting DCA backend...", { service: 'System' });
+    logger.info("🚀 Starting DCA backend...", { service: 'System', method: 'index' });
 
     // 1️⃣ Conectar a MongoDB
     await connectMongo();
@@ -50,7 +50,7 @@ async function bootstrap(): Promise<void> {
     // ==========================
     // 🤖 Treasury Bots (Multi-Token)
     // ==========================
-    logger.info("🤖 Starting Treasury Bots...", { service: 'System', method: 'Treasury' });
+    logger.info("🤖 Starting Treasury Bots...", { service: 'System', method: 'index' });
 
     // 1. WBTC Treasury
     const wbtcTreasury = new TreasuryService({
@@ -73,7 +73,7 @@ async function bootstrap(): Promise<void> {
     // Start independent loops (threads)
     setInterval(() => wbtcTreasury.checkAndRefill(), 60000); // Check every 60s
     setInterval(() => wethTreasury.checkAndRefill(), 60000); // Check every 60s
-    
+
     logger.info("✅ Treasury Bots started (WBTC & WETH) on separate threads", { service: 'System', method: 'Treasury' });
 
   } catch (err: any) {
