@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   getDefaultConfig,
   RainbowKitProvider,
-  lightTheme,
+  darkTheme,
 } from "@rainbow-me/rainbowkit";
 import "@rainbow-me/rainbowkit/styles.css";
 
@@ -28,9 +28,9 @@ export default function App({ Component, pageProps }: AppProps) {
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
           modalSize="compact"
-          theme={lightTheme({
-            accentColor: "#4F46E5",
-            accentColorForeground: "#FFFFFF",
+          theme={darkTheme({
+            accentColor: "#00d4ff",
+            accentColorForeground: "#0a0e1a",
             borderRadius: "medium",
             fontStack: "rounded",
           })}

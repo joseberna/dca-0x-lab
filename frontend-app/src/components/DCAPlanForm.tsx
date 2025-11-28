@@ -123,24 +123,26 @@ export default function DCAPlanForm() {
     }
   };
 
-  if (!isClient) return <div className="text-center mt-10">Loading...</div>;
+  if (!isClient) return <div className="text-center mt-10 text-foreground/50">Loading...</div>;
 
   return (
     <form
       onSubmit={handleCreate}
-      className="max-w-md mx-auto bg-white rounded-2xl shadow-lg p-8 space-y-5 border border-gray-100"
+      className="max-w-md mx-auto card glass fade-in"
     >
-      <h2 className="text-2xl font-bold text-center text-gray-800">
+      <h2 className="text-2xl font-bold text-center gradient-text mb-2">
         {t.form.title}
       </h2>
-      <p className="text-sm text-gray-500 text-center mb-2">
+      <p className="text-sm text-foreground/60 text-center mb-6">
         {t.form.subtitle}
       </p>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {/* Presupuesto */}
         <div>
-          <label className="text-sm text-gray-600">{t.form.totalBudget} (USDC)</label>
+          <label className="block text-sm font-medium text-foreground/80 mb-2">
+            {t.form.totalBudget} (USDC)
+          </label>
           <input
             type="number"
             step="0.01"
@@ -148,17 +150,20 @@ export default function DCAPlanForm() {
             value={budget}
             onChange={(e) => setBudget(e.target.value)}
             required
-            className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none text-black"
+            className="w-full"
+            placeholder="100.00"
           />
         </div>
 
         {/* Token destino */}
         <div>
-          <label className="text-sm text-gray-600">{t.form.targetToken}</label>
+          <label className="block text-sm font-medium text-foreground/80 mb-2">
+            {t.form.targetToken}
+          </label>
           <select
             value={tokenTo}
             onChange={(e) => setTokenTo(e.target.value)}
-            className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none text-black"
+            className="w-full"
           >
             {tokens.map((token: any) => (
               <option key={token.symbol} value={token.symbol}>
@@ -169,45 +174,53 @@ export default function DCAPlanForm() {
         </div>
 
         {/* Configuración */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-sm text-gray-600">{t.form.divisions} (Ticks)</label>
+            <label className="block text-sm font-medium text-foreground/80 mb-2">
+              {t.form.divisions} (Ticks)
+            </label>
             <input
               type="number"
               min="1"
               value={divisions}
               onChange={(e) => setDivisions(e.target.value)}
-              className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none text-black"
+              className="w-full"
+              placeholder="4"
             />
           </div>
           <div>
-            <label className="text-sm text-gray-600">{t.form.interval} (Minutes)</label>
+            <label className="block text-sm font-medium text-foreground/80 mb-2">
+              {t.form.interval} (Min)
+            </label>
             <input
               type="number"
               min="1"
               value={interval}
               onChange={(e) => setInterval(e.target.value)}
-              className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none text-black"
+              className="w-full"
+              placeholder="60"
             />
           </div>
         </div>
       </div>
 
       {/* Warning */}
-      <div className="p-3 bg-yellow-50 text-xs text-gray-600 rounded-lg border border-yellow-200 whitespace-pre-wrap">
-        {t.form.warning(budget, divisions, interval)}
+      <div className="mt-4 p-4 bg-accent/10 border border-accent/20 rounded-lg">
+        <p className="text-xs text-foreground/70 leading-relaxed">
+          {t.form.warning(budget, divisions, interval)}
+        </p>
       </div>
 
       {/* Consent */}
-      <div className="flex items-center gap-2 text-xs text-gray-600">
+      <div className="flex items-start gap-3 mt-4 text-xs text-foreground/70">
         <input
           type="checkbox"
           id="consent"
           checked={consent}
           onChange={(e) => setConsent(e.target.checked)}
-          className="w-4 h-4 border-gray-300 text-indigo-600 rounded focus:ring-indigo-500"
+          className="mt-0.5 w-4 h-4 rounded border-border bg-input text-primary focus:ring-primary/50"
         />
-        <label htmlFor="consent" className="cursor-pointer select-none">
+        <label htmlFor="consent" className="cursor-pointer select-none leading-relaxed">
           ✅ {lang === "es" ? "Acepto los términos." : "I accept terms."}
         </label>
       </div>
@@ -216,24 +229,28 @@ export default function DCAPlanForm() {
       <button
         type="submit"
         disabled={!isFormValid || loading}
-        className={`w-full py-2.5 rounded-lg text-white font-medium transition ${
-          !isFormValid || loading
-            ? "bg-gray-300 cursor-not-allowed"
-            : "bg-indigo-600 hover:bg-indigo-700"
-        }`}
+        className="w-full mt-6 btn-primary"
       >
-        {loading ? t.form.signing : t.form.approveButton}
+        {loading ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="pulse">⏳</span> {t.form.signing}
+          </span>
+        ) : (
+          t.form.approveButton
+        )}
       </button>
 
       {/* Status */}
       {status && (
-        <p className="text-sm text-center text-gray-500 whitespace-pre-wrap mt-2 break-all">
-          {status}
-        </p>
+        <div className="mt-4 p-3 bg-secondary/50 border border-border rounded-lg">
+          <p className="text-sm text-center text-foreground/80 break-all">
+            {status}
+          </p>
+        </div>
       )}
 
       {!isConnected && (
-        <p className="text-xs text-center text-gray-400 mt-2">
+        <p className="text-xs text-center text-foreground/40 mt-4">
           {t.form.connectWallet}
         </p>
       )}
