@@ -10,58 +10,73 @@ import dcaRoutes from "./routes/dca.routes.ts";
 import walletRoutes from "./routes/wallet.routes.ts";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "../../config/swagger.ts";
+import { startDCAScheduler } from "../jobs/scheduler/dcaScheduler.ts";
+import { dcaWorker } from "../jobs/workers/dcaWorker.ts";
+import { serverAdapter } from "../jobs/dashboard.ts";
 
 dotenv.config();
 
 export const startServer = async (): Promise<void> => {
   try {
-    // 1️⃣ Inicializar Express y HTTP
     const app = express();
     const server = http.createServer(app);
+    const SCHEDULER_INTERVAL = parseInt(process.env.SCHEDULER_INTERVAL || "60000");
 
-    // 2️⃣ Middleware base
     app.use(cors());
     app.use(express.json());
+    
+    // Serve static files (CSS, favicon, etc.)
+    app.use(express.static('public'));
+    
     app.use("/api/wallets", walletRoutes);
     app.use("/api/dca", dcaRoutes);
     app.get("/ping", (_, res) => res.send("pong 🏓"));
 
-    // 3️⃣ Swagger
-    app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+    app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+      customCssUrl: '/swagger-dark.css',
+      customSiteTitle: "DedlyFi DCA API",
+      customfavIcon: "/favicon.png"
+    }));
+    app.use("/admin/queues", serverAdapter.getRouter());
 
-    // 4️⃣ Rutas API (REST)
-    app.use("/api/dca", dcaRoutes);
-
-    // 5️⃣ Socket.io
     const io = initSocketServer(server);
     io.on("connection", (socket) => {
-      logger.info(`🟢 Socket connected: ${socket.id}`);
+      logger.info(`🟢 Socket connected: ${socket.id}`, { service: 'System', method: 'Socket' });
 
       socket.on("subscribeToWallet", (wallet: string) => {
         socket.join(wallet);
-        logger.info(`👤 Wallet subscribed: ${wallet}`);
+        logger.info(`👤 Wallet subscribed: ${wallet}`, { service: 'System', method: 'Socket' });
       });
 
       socket.on("disconnect", () =>
-        logger.info(`🔴 Socket disconnected: ${socket.id}`)
+        logger.info(`🔴 Socket disconnected: ${socket.id}`, { service: 'System', method: 'Socket' })
       );
     });
 
-    // 6️⃣ Cron job — Ejecutar DCA cada 30s
-    nodeCron.schedule("*/30 * * * * *", async () => {
-      logger.info("⏱ Running scheduled DCA check...");
-      const dcaService = new DCAService();
-      await dcaService.executePlans();
+    // ==========================
+    // 🔹 DCA Scheduler 
+    // ==========================
+    // Iniciar el scheduler una sola vez
+    await startDCAScheduler();
+
+    // ==========================
+    // 🔹 DCA Worker (procesa ejecuciones)
+    // ==========================
+    dcaWorker.on("completed", (job) => {
+      logger.info(`✅ Job ${job.id} completed`, { service: 'System', method: 'Worker' });
     });
 
-    // 7️⃣ Iniciar servidor
+    dcaWorker.on("failed", (job, err) => {
+      logger.error(`❌ Job ${job?.id} failed: ${err.message}`, { service: 'System', method: 'Worker' });
+    });
+
     const PORT = process.env.PORT || 4000;
     server.listen(PORT, () => {
-      logger.info(`🚀 Server running at http://localhost:${PORT}`);
-      logger.info(`📘 Swagger docs: http://localhost:${PORT}/docs`);
+      logger.info(`🚀 Server running at http://localhost:${PORT}`, { service: 'System', method: 'Server' });
+      logger.info(`📘 Swagger docs: http://localhost:${PORT}/docs`, { service: 'System', method: 'Server' });
     });
   } catch (err: any) {
-    logger.error(`❌ Error during server startup: ${err.message}`);
+    logger.error(`❌ Error during server startup: ${err.message}`, { service: 'System', method: 'Server' });
     process.exit(1);
   }
 };

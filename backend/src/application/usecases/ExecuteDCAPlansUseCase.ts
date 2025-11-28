@@ -19,7 +19,7 @@ export class ExecuteDCAPlansUseCase {
         message: `Executed one DCA operation for ${plan.tokenTo}`,
       });
 
-      console.log(`✅ Executed DCA for plan ${plan._id}`);
+      // DCA plan executed successfully
     }
   }
 }

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import logger from "../../config/logger.ts";
 dotenv.config();
 
 export const connectMongo = async (): Promise<void> => {
@@ -10,5 +11,5 @@ export const connectMongo = async (): Promise<void> => {
     serverSelectionTimeoutMS: 5000,
   });
 
-  console.log("✅ Connected to MongoDB Atlas Cluster");
+  logger.info("✅ Connected to MongoDB Atlas Cluster", { service: 'System', method: 'Database' });
 };
