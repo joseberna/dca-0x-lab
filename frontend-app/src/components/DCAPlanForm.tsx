@@ -107,6 +107,7 @@ export default function DCAPlanForm() {
           intervalCalc,
           BigInt(divisions),
         ],
+        gas: BigInt(500000), // Manual gas limit to prevent exceeding network cap
       });
 
       console.log("Tx Hash:", tx);
@@ -123,6 +124,8 @@ export default function DCAPlanForm() {
       
       if (err.message?.includes("underpriced")) {
         errorMessage = "⚠️ Gas price muy bajo. Por favor, cancela las transacciones pendientes en Metamask e intenta de nuevo.";
+      } else if (err.message?.includes("gas limit too high")) {
+        errorMessage = "⚠️ El contrato puede tener un error. Verifica que tengas fondos USDC suficientes y que el contrato esté correctamente desplegado.";
       } else if (err.message?.includes("insufficient funds")) {
         errorMessage = "💰 Fondos insuficientes para gas. Necesitas más ETH en tu wallet.";
       } else if (err.message?.includes("User rejected") || err.code === 4001) {
