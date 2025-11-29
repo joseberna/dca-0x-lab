@@ -10,6 +10,7 @@ import { getAvailableTokens } from "../utils/getAvailableTokens";
 import logger from "../utils/logger";
 import { erc20Abi } from "viem";
 import { LoadingOverlay } from "./LoadingOverlay";
+import axios from "axios";
 
 export default function DCAPlanForm() {
   const { isConnected, address } = useAccount();
@@ -115,11 +116,20 @@ export default function DCAPlanForm() {
         // gas: BigInt(500000), // Removed manual gas limit, should work if approved
       });
 
+import axios from "axios";
+// ...
+
       console.log("Tx Hash:", tx);
       setStatus(`${t.status.created} Hash: ${tx}`);
       
-      // Optional: Notify backend to index this plan immediately
-      // await axios.post('/api/dca/sync', { txHash: tx });
+      // Notify backend to index this plan immediately
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        await axios.post(`${apiUrl}/api/dca/sync`, { txHash: tx });
+        logger.success("Plan synced with backend", { service: 'Frontend', method: 'createPlan' });
+      } catch (syncErr) {
+        logger.error("Failed to sync plan with backend", { service: 'Frontend', method: 'createPlan' });
+      }
       
       // Keep loading for a moment to show success
       await new Promise(resolve => setTimeout(resolve, 2000));
