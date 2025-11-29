@@ -30,6 +30,14 @@ export const pt = {
         created: "🚀 Plano criado com sucesso na blockchain",
         error: "❌ Erro: ",
     },
+    errors: {
+        underpriced: "⚠️ Preço de gas muito baixo. Por favor, cancele as transações pendentes no Metamask e tente novamente.",
+        gasLimit: "⚠️ O contrato pode ter um erro. Verifique se você tem fundos USDC suficientes e se o contrato está corretamente implantado.",
+        insufficientFunds: "💰 Fundos insuficientes para gas. Você precisa de mais ETH em sua carteira.",
+        userRejected: "❌ Transação cancelada pelo usuário.",
+        nonce: "🔄 Erro de sincronização no Metamask. Vá para: Configurações > Avançado > Limpar dados de atividade (Clear activity tab data). Isso resolverá o erro.",
+        unknown: "Erro desconhecido"
+    },
     features: {
         nonCustodial: {
             title: "Non-Custodial",

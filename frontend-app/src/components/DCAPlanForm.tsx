@@ -133,22 +133,23 @@ export default function DCAPlanForm() {
 
     } catch (err: any) {
       console.error("Transaction error:", err);
+      logger.error(`Transaction failed: ${err.message}`, { service: 'Frontend', method: 'handleCreate' });
       
       // Better error messages for users
       let errorMessage = "";
       
       if (err.message?.includes("underpriced")) {
-        errorMessage = "⚠️ Gas price muy bajo. Por favor, cancela las transacciones pendientes en Metamask e intenta de nuevo.";
+        errorMessage = t.errors.underpriced;
       } else if (err.message?.includes("gas limit too high")) {
-        errorMessage = "⚠️ El contrato puede tener un error. Verifica que tengas fondos USDC suficientes y que el contrato esté correctamente desplegado.";
+        errorMessage = t.errors.gasLimit;
       } else if (err.message?.includes("insufficient funds")) {
-        errorMessage = "💰 Fondos insuficientes para gas. Necesitas más ETH en tu wallet.";
+        errorMessage = t.errors.insufficientFunds;
       } else if (err.message?.includes("User rejected") || err.code === 4001) {
-        errorMessage = "❌ Transacción cancelada por el usuario.";
+        errorMessage = t.errors.userRejected;
       } else if (err.message?.includes("nonce") || err.message?.includes("Nonce")) {
-        errorMessage = "🔄 Error de sincronización en Metamask. Ve a: Configuración > Avanzado > Borrar datos de actividad (Clear activity tab data). Esto solucionará el error.";
+        errorMessage = t.errors.nonce;
       } else {
-        errorMessage = err.shortMessage || err.message || "Error desconocido";
+        errorMessage = err.shortMessage || err.message || t.errors.unknown;
       }
       
       setStatus(`${t.status.error}${errorMessage}`);
