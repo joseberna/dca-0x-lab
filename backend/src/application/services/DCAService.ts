@@ -207,10 +207,22 @@ export class DCAService {
     try {
       logger.info(`🔄 Syncing plan from tx: ${txHash}`, { service: 'DCAService' });
       
-      const receipt = await this.provider.getTransactionReceipt(txHash);
+      // Retry logic for getting transaction receipt
+      let receipt = null;
+      const maxRetries = 10;
+      const retryDelay = 2000; // 2 seconds
+      
+      for (let i = 0; i < maxRetries; i++) {
+        receipt = await this.provider.getTransactionReceipt(txHash);
+        if (receipt) break;
+        
+        logger.info(`Receipt not found yet, retrying in ${retryDelay}ms... (${i + 1}/${maxRetries})`, { service: 'DCAService' });
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
+      
       if (!receipt) {
-        logger.error(`Transaction receipt not found for ${txHash}`, { service: 'DCAService' });
-        throw new Error("Transaction receipt not found");
+        logger.error(`Transaction receipt not found for ${txHash} after ${maxRetries} retries`, { service: 'DCAService' });
+        throw new Error("Transaction receipt not found after retries");
       }
 
       logger.info(`Receipt found with ${receipt.logs.length} logs`, { service: 'DCAService' });
