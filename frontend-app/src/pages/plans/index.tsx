@@ -4,6 +4,7 @@ import axios from "axios";
 import { useRouter } from "next/router";
 import { useDCAStore } from "../../store/useDCAStore";
 import NavbarPlans from "../../components/NavBarPlans";
+import { useSocketEvent } from "../../hooks/useSocketEvent";
 
 
 export default function PlansPage() {
@@ -19,7 +20,7 @@ export default function PlansPage() {
 
         const fetchPlans = async () => {
             try {
-                const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/dca/wallet/${address}`);
+                const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/dca/my-plans/${address}`);
                 setPlans(res.data.data);
             } catch (err) {
                 console.error("Error fetching plans:", err);
@@ -28,6 +29,16 @@ export default function PlansPage() {
 
         fetchPlans();
     }, [isConnected, address, router]);
+
+    useSocketEvent("dca:updated", () => {
+        // Simple refresh logic: re-fetch plans when any plan is updated
+        // In a real app, we might check if the updated plan belongs to the user
+        if (isConnected && address) {
+             axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/dca/my-plans/${address}`)
+                .then(res => setPlans(res.data.data))
+                .catch(err => console.error("Error refreshing plans:", err));
+        }
+    });
 
     const openPlanDetail = (plan: any) => {
         // pasamos el objeto completo 
