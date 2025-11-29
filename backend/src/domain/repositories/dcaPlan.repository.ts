@@ -41,6 +41,18 @@ export class DCAPlanRepository {
   }
 
   /**
+   * 🔍 Busca un plan por su ID de contrato
+   */
+  async findByContractId(contractId: number) {
+    try {
+      return await DCAPlanModel.findOne({ contractId });
+    } catch (err: any) {
+      logger.error(`❌ Error buscando plan por contractId ${contractId}: ${err.message}`);
+      throw err;
+    }
+  }
+
+  /**
    * 🔍 Busca planes activos
    */
   async findActivePlans() {

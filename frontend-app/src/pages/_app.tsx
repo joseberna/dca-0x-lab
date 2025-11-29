@@ -1,21 +1,23 @@
 import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import { WagmiProvider, http } from "wagmi";
-import { polygon } from "wagmi/chains";
+import { polygon, sepolia } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   getDefaultConfig,
   RainbowKitProvider,
-  lightTheme,
+  darkTheme,
 } from "@rainbow-me/rainbowkit";
 import "@rainbow-me/rainbowkit/styles.css";
+import { ToastContainer } from "../components/ToastContainer";
 
 const config = getDefaultConfig({
   appName: "DCA Dashboard",
   projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID!,
-  chains: [polygon],
+  chains: [polygon, sepolia],
   transports: {
     [polygon.id]: http(process.env.NEXT_PUBLIC_RPC_URL!),
+    [sepolia.id]: http(process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA!),
   },
 });
 
@@ -27,14 +29,15 @@ export default function App({ Component, pageProps }: AppProps) {
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
           modalSize="compact"
-          theme={lightTheme({
-            accentColor: "#4F46E5",
-            accentColorForeground: "#FFFFFF",
+          theme={darkTheme({
+            accentColor: "#00d4ff",
+            accentColorForeground: "#0a0e1a",
             borderRadius: "medium",
             fontStack: "rounded",
           })}
         >
           <Component {...pageProps} />
+          <ToastContainer />
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

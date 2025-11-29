@@ -320,4 +320,38 @@ router.get("/:planId", async (req, res) => {
   }
 });
 
+/**
+ * @openapi
+ * /api/dca/sync:
+ *   post:
+ *     summary: Sincroniza un plan desde un hash de transacción
+ *     tags: [DCA Core]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - txHash
+ *             properties:
+ *               txHash:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Plan sincronizado
+ */
+router.post("/sync", async (req, res) => {
+  try {
+    const { txHash } = req.body;
+    if (!txHash) return res.status(400).json({ success: false, message: "txHash requerido" });
+
+    const plan = await dcaService.syncPlanFromChain(txHash);
+    res.json({ success: true, data: plan });
+  } catch (err: any) {
+    logger.error(`[API] Error syncing plan: ${err.message}`);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 export default router;

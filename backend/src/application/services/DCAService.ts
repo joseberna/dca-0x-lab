@@ -203,6 +203,101 @@ export class DCAService {
     };
   }
 
+  async syncPlanFromChain(txHash: string): Promise<any> {
+    try {
+      logger.info(`🔄 Syncing plan from tx: ${txHash}`, { service: 'DCAService' });
+      
+      // Retry logic for getting transaction receipt
+      let receipt = null;
+      const maxRetries = 10;
+      const retryDelay = 2000; // 2 seconds
+      
+      for (let i = 0; i < maxRetries; i++) {
+        receipt = await this.provider.getTransactionReceipt(txHash);
+        if (receipt) break;
+        
+        logger.info(`Receipt not found yet, retrying in ${retryDelay}ms... (${i + 1}/${maxRetries})`, { service: 'DCAService' });
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
+      
+      if (!receipt) {
+        logger.error(`Transaction receipt not found for ${txHash} after ${maxRetries} retries`, { service: 'DCAService' });
+        throw new Error("Transaction receipt not found after retries");
+      }
+
+      logger.info(`Receipt found with ${receipt.logs.length} logs`, { service: 'DCAService' });
+
+      const accountingLogs = receipt.logs.filter(
+        (log: any) => log.address.toLowerCase() === this.accountingContract.address.toLowerCase()
+      );
+
+      logger.info(`Found ${accountingLogs.length} logs from DCA Accounting contract`, { service: 'DCAService' });
+
+      let planId: number | null = null;
+      let userAddress: string | null = null;
+      let toToken: string | null = null;
+      let totalBudget: any = null;
+
+      for (const log of accountingLogs) {
+        try {
+          const parsed = this.accountingContract.interface.parseLog(log);
+          logger.info(`Parsed event: ${parsed.name}`, { service: 'DCAService' });
+          
+          if (parsed.name === "PlanCreated") {
+            planId = parsed.args.planId.toNumber();
+            userAddress = parsed.args.user;
+            toToken = parsed.args.toToken;
+            totalBudget = parsed.args.totalBudget;
+            logger.info(`Plan details: ID=${planId}, User=${userAddress}, Token=${toToken}`, { service: 'DCAService' });
+            break;
+          }
+        } catch (e: any) {
+          logger.warn(`Failed to parse log: ${e.message}`, { service: 'DCAService' });
+        }
+      }
+
+      if (planId === null) {
+        logger.error("PlanCreated event not found in logs", { service: 'DCAService' });
+        throw new Error("PlanCreated event not found in logs");
+      }
+
+      // Check if exists
+      const existing = await this.planRepo.findByContractId(planId);
+      if (existing) {
+          logger.info(`⚠️ Plan ${planId} already exists in DB`, { service: 'DCAService' });
+          return existing;
+      }
+
+      // Fetch full details from contract
+      logger.info(`Fetching on-chain details for plan ${planId}`, { service: 'DCAService' });
+      const onChainPlan = await this.accountingContract.plans(planId);
+      
+      // Save to DB
+      const dbPlan = await this.planRepo.create({
+        userAddress: userAddress!,
+        contractId: planId,
+        network: process.env.ACTIVE_NETWORK || "sepolia",
+        tokenFrom: "USDC",
+        tokenTo: toToken!,
+        totalAmount: totalBudget.toNumber(),
+        amountPerInterval: onChainPlan.amountPerTick.toNumber(),
+        intervalSeconds: onChainPlan.interval.toNumber(),
+        totalOperations: onChainPlan.totalTicks.toNumber(),
+        executedOperations: onChainPlan.executedTicks.toNumber(),
+        lastExecution: new Date(),
+        nextExecution: new Date(),
+        status: "active",
+        isActive: true,
+      });
+
+      logger.info(`✅ Plan synced: ${dbPlan._id}`, { service: 'DCAService' });
+      return dbPlan;
+    } catch (error: any) {
+      logger.error(`Failed to sync plan: ${error.message}`, { service: 'DCAService' });
+      throw error;
+    }
+  }
+
   // ===========================================================
   // EJECUCIÓN DEL PLAN DCA
   // ===========================================================

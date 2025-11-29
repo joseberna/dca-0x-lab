@@ -3,11 +3,30 @@ import PlanDetail from "../src/pages/plans/[id]";
 import axios from "axios";
 import { useRouter } from "next/router";
 
+// Mock Next Router
 jest.mock("next/router", () => ({
     useRouter: jest.fn(),
 }));
 
+// Mock Axios
 jest.mock("axios");
+
+// Mock Wagmi
+jest.mock("wagmi", () => ({
+    useChainId: () => 11155111,
+}));
+
+// Mock Store
+jest.mock("../src/store/useDCAStore", () => ({
+    useDCAStore: () => ({ address: "0x123", isConnected: true }),
+}));
+
+// Mock NavbarPlan
+jest.mock("../src/components/NavBarPlan", () => {
+    return function DummyNavbar() {
+        return <div>Navbar</div>;
+    };
+});
 
 describe("PlanDetail Page", () => {
     beforeEach(() => {
@@ -19,45 +38,46 @@ describe("PlanDetail Page", () => {
         (axios.get as jest.Mock).mockResolvedValue({
             data: {
                 success: true,
-                data: [
-                    {
-                        _id: "exec1",
-                        amount: 0.5,
-                        txHash: "0x123abc",
-                        status: "success",
-                        timestamp: "2025-11-04T19:00:00Z",
-                        tokenFrom: "USDC",
-                        tokenTo: "WBTC",
-                        amountPerInterval: 0.5,
-                        intervalDays: 7,
-                        totalOperations: 4,
-                        executedOperations: 2,
-                        statusPlan: "active",
-                    },
-                ],
+                data: {
+                    _id: "plan123",
+                    tokenFrom: "USDC",
+                    tokenTo: "WBTC",
+                    amountPerInterval: 100,
+                    intervalDays: 7,
+                    totalOperations: 4,
+                    executedOperations: 1,
+                    status: "active",
+                    executions: [
+                        {
+                            _id: "exec1",
+                            amount: 100,
+                            txHash: "0xabc123456789",
+                            status: "success",
+                            createdAt: "2023-01-01T00:00:00Z"
+                        }
+                    ]
+                },
             },
         });
     });
 
-    // it("renders plan info and successful executions", async () => {
-    //     render(<PlanDetail />);
+    it("renders plan details and executions", async () => {
+        render(<PlanDetail />);
 
-    //     // Esperamos que se muestre "Cargando plan..."
-    //     expect(screen.getByText(/Cargando plan/i)).toBeInTheDocument();
+        // Loading state
+        expect(screen.getByText(/Cargando plan/i)).toBeInTheDocument();
 
-    //     // Forzamos que el mock de axios se resuelva
-    //     await Promise.resolve();
+        // Wait for data
+        await waitFor(() => {
+            expect(screen.getByText(/Detalle del Plan DCA/i)).toBeInTheDocument();
+        });
 
-    //     // Esperamos que el componente se actualice
-    //     await waitFor(() => {
-    //         expect(screen.queryByText(/Cargando plan/i)).not.toBeInTheDocument();
-    //     }, { timeout: 2000 });
-
-    //     // Ahora verificamos el contenido
-    //     expect(screen.getByText(/Plan DCA Detalle/i)).toBeInTheDocument();
-    //     expect(screen.getByText(/USDC/i)).toBeInTheDocument();
-    //     expect(screen.getByText(/WBTC/i)).toBeInTheDocument();
-    //     expect(screen.getByText(/Ejecuciones realizadas/i)).toBeInTheDocument();
-    // });
-
+        // Check content
+        expect(screen.getByText("USDC")).toBeInTheDocument();
+        expect(screen.getByText("WBTC")).toBeInTheDocument();
+        expect(screen.getByText("100 USDC")).toBeInTheDocument();
+        
+        // Check execution (we slice the hash in the component)
+        expect(screen.getByText(/0xabc12345.*6789/)).toBeInTheDocument();
+    });
 });

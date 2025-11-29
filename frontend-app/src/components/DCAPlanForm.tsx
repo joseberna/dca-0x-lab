@@ -1,27 +1,34 @@
 "use client";
 import { useState, useMemo, useEffect } from "react";
-import { useAccount, useWriteContract, useChainId } from "wagmi";
+import { useAccount, useWriteContract, useChainId, usePublicClient } from "wagmi";
 import { parseUnits } from "viem";
-import DCA_PLAN_MANAGER_ABI from "../abis/DCAPlanManager.json";
-import { CONTRACTS } from "../utils/contracts";
+import DCA_ACCOUNTING_ABI from "../abis/DCAAccountingV2.json";
+import { getContracts } from "../utils/contracts";
 import { useLangStore } from "../store/useLangStore";
 import { getLang } from "../i18n";
 import { getAvailableTokens } from "../utils/getAvailableTokens";
+import logger from "../utils/logger";
+import { erc20Abi } from "viem";
+import { LoadingOverlay } from "./LoadingOverlay";
+import axios from "axios";
+import { useToast } from "../hooks/useToast";
 
 export default function DCAPlanForm() {
-  // --- Hooks siempre arriba ---
-  const { isConnected } = useAccount();
-  const { writeContract } = useWriteContract();
+  const { isConnected, address } = useAccount();
+  const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
   const chainId = useChainId();
   const { lang } = useLangStore();
   const t = getLang(lang);
+  const contracts = getContracts(chainId);
+  const toast = useToast();
 
-  // --- Estado local ---
   const [isClient, setIsClient] = useState(false);
   const [budget, setBudget] = useState("");
-  const [tokenTo, setTokenTo] = useState("ETH");
+  const [tokenTo, setTokenTo] = useState("WBTC");
   const [divisions, setDivisions] = useState("");
   const [interval, setInterval] = useState("");
+  const [intervalUnit, setIntervalUnit] = useState<'days' | 'minutes'>('days');
   const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
@@ -44,191 +51,283 @@ export default function DCAPlanForm() {
   }, [isConnected, budget, divisions, interval, consent]);
 
   const handleCreate = async (e: any) => {
+    logger.info("Creating Plan...", { service: 'Frontend', method: 'handleCreate' });
     e.preventDefault();
     if (!isFormValid) return;
 
-    const allowance = parseUnits(budget, 6);
+    const allowance = parseUnits(budget, 6); // USDC has 6 decimals
     const amountPerInterval = allowance / BigInt(divisions);
-    const intervalSeconds = parseInt(interval) * 24 * 60 * 60;
+    const intervalCalc = BigInt(interval) * BigInt(intervalUnit === 'days' ? 86400 : 60);
 
     try {
-      setLoading(true);
-      setStatus(t.status.waitingApproval);
+      if (!publicClient) throw new Error("Public client not initialized");
+      if (!address) throw new Error("Wallet not connected");
 
-      // 1️⃣ Approve
-      await writeContract({
-        abi: [
-          {
-            name: "approve",
-            type: "function",
-            stateMutability: "nonpayable",
-            inputs: [
-              { name: "spender", type: "address" },
-              { name: "amount", type: "uint256" },
-            ],
-            outputs: [],
-          },
-        ],
-        address: CONTRACTS.USDC as `0x${string}`,
-        functionName: "approve",
-        args: [CONTRACTS.DCA_PLAN_MANAGER, allowance],
+      setLoading(true);
+      setStatus(t.status.checkingAllowance);
+
+      // 0️⃣ Check Allowance
+      const currentAllowance = await publicClient.readContract({
+        address: contracts.USDC as `0x${string}`,
+        abi: erc20Abi,
+        functionName: 'allowance',
+        args: [address, contracts.DCA_ACCOUNTING as `0x${string}`]
       });
 
-      setStatus(t.status.approved);
+      if (currentAllowance < allowance) {
+        setStatus(t.status.waitingApproval);
+
+        // 1️⃣ Approve USDC
+        logger.info("Approving USDC...", { service: 'Frontend', method: 'handleCreate', txHash: contracts.USDC });
+        const approveHash = await writeContractAsync({
+          abi: erc20Abi,
+          address: contracts.USDC as `0x${string}`,
+          functionName: "approve",
+          args: [contracts.DCA_ACCOUNTING as `0x${string}`, allowance],
+        });
+
+        logger.info(`Approve sent: ${approveHash}`, { service: 'Frontend', method: 'approve' });
+        setStatus(t.status.waitingConfirmation);
+        
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+        logger.success("Approve confirmed", { service: 'Frontend', method: 'approve' });
+      } else {
+        logger.info("Allowance sufficient, skipping approval", { service: 'Frontend', method: 'handleCreate' });
+      }
+
+      setStatus(t.status.creatingPlan);
 
       // 2️⃣ Create Plan
-      await writeContract({
-        abi: DCA_PLAN_MANAGER_ABI.abi,
-        address: CONTRACTS.DCA_PLAN_MANAGER as `0x${string}`,
+      logger.info("Creating Plan...", {
+        service: 'Frontend',
+        method: 'createPlan',
+        planId: `Budget: ${allowance}, Ticks: ${divisions}`
+      });
+
+      const tx = await writeContractAsync({
+        abi: DCA_ACCOUNTING_ABI.abi,
+        address: contracts.DCA_ACCOUNTING as `0x${string}`,
         functionName: "createPlan",
         args: [
-          CONTRACTS.USDC,
           tokenTo,
           allowance,
           amountPerInterval,
-          intervalSeconds,
-          parseInt(divisions),
+          intervalCalc,
+          BigInt(divisions),
         ],
+        // gas: BigInt(500000), // Removed manual gas limit, should work if approved
       });
 
-      setStatus(t.status.created);
+      console.log("Tx Hash:", tx);
+      
+      // Notify backend to index this plan immediately
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        await axios.post(`${apiUrl}/api/dca/sync`, { txHash: tx });
+        logger.success("Plan synced with backend", { service: 'Frontend', method: 'createPlan' });
+        
+        // Show success toast
+        toast.success(
+          t.toast.planCreatedTitle,
+          t.toast.planCreatedMessage(budget, tokenTo),
+          6000
+        );
+      } catch (syncErr) {
+        logger.error("Failed to sync plan with backend", { service: 'Frontend', method: 'createPlan' });
+        
+        // Show warning toast (plan created but not synced)
+        toast.warning(
+          t.toast.planCreatedPendingTitle,
+          t.toast.planCreatedPendingMessage,
+          6000
+        );
+      }
+      
+      // Reset form
+      setBudget("");
+      setDivisions("");
+      setInterval("");
+      setConsent(false);
+      setStatus("");
+      
+      // Keep loading for a moment
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
     } catch (err: any) {
-      setStatus(`${t.status.error}${err.shortMessage || err.message}`);
+      console.error("Transaction error:", err);
+      logger.error(`Transaction failed: ${err.message}`, { service: 'Frontend', method: 'handleCreate' });
+      
+      // Better error messages for users
+      let errorTitle = t.toast.transactionFailed;
+      let errorMessage = "";
+      
+      if (err.message?.includes("underpriced")) {
+        errorMessage = t.errors.underpriced;
+      } else if (err.message?.includes("gas limit too high")) {
+        errorMessage = t.errors.gasLimit;
+      } else if (err.message?.includes("insufficient funds")) {
+        errorMessage = t.errors.insufficientFunds;
+      } else if (err.message?.includes("User rejected") || err.code === 4001) {
+        errorTitle = t.toast.transactionCancelled;
+        errorMessage = t.errors.userRejected;
+      } else if (err.message?.includes("nonce") || err.message?.includes("Nonce")) {
+        errorMessage = t.errors.nonce;
+      } else {
+        errorMessage = err.shortMessage || err.message || t.errors.unknown;
+      }
+      
+      // Show error toast
+      toast.error(errorTitle, errorMessage, 8000);
+      setStatus("");
     } finally {
       setLoading(false);
     }
   };
 
-  // --- Previene render SSR mismatched ---
-  if (!isClient) {
-    return (
-      <div className="text-center text-gray-400 text-sm mt-10">
-        Loading DCA Form...
-      </div>
-    );
-  }
+  if (!isClient) return <div className="text-center mt-10 text-foreground/50">Loading...</div>;
 
   return (
-    <form
-      onSubmit={handleCreate}
-      className="max-w-md mx-auto bg-white rounded-2xl shadow-lg p-8 space-y-5 border border-gray-100"
-    >
-      <h2 className="text-2xl font-bold text-center text-gray-800">
-        {t.form.title}
-      </h2>
-      <p className="text-sm text-gray-500 text-center mb-2">
-        {t.form.subtitle}
-      </p>
+    <>
+      <LoadingOverlay isLoading={loading} message={status} />
+      <form
+        onSubmit={handleCreate}
+        className="max-w-md mx-auto card glass fade-in"
+      >
+        <h2 className="text-2xl font-bold text-center gradient-text mb-2">
+          {t.form.title}
+        </h2>
+        <p className="text-sm text-foreground/60 text-center mb-6">
+          {t.form.subtitle}
+        </p>
 
-      <div className="space-y-3">
-        {/* Presupuesto */}
-        <div>
-          <label className="text-sm text-gray-600">{t.form.totalBudget}</label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={budget}
-            onChange={(e) => setBudget(e.target.value)}
-            required
-            className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none"
-          />
-        </div>
+        <div className="space-y-4">
+          {/* Presupuesto */}
+          <div>
+            <label className="block text-sm font-medium text-foreground/80 mb-2">
+              {t.form.totalBudget} (USDC)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+              required
+              className="w-full"
+              placeholder="100.00"
+            />
+          </div>
 
-        {/* Token destino dinámico */}
-        <div>
-          <label className="text-sm text-gray-600">{t.form.targetToken}</label>
-          <select
-            value={tokenTo}
-            onChange={(e) => setTokenTo(e.target.value)}
-            className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none"
-          >
-            {tokens.length > 0 ? (
-              tokens.map((token: any) => (
+          {/* Token destino */}
+          <div>
+            <label className="block text-sm font-medium text-foreground/80 mb-2">
+              {t.form.targetToken}
+            </label>
+            <select
+              value={tokenTo}
+              onChange={(e) => setTokenTo(e.target.value)}
+              className="w-full"
+            >
+              {tokens.map((token: any) => (
                 <option key={token.symbol} value={token.symbol}>
                   {token.symbol} — {token.name}
                 </option>
-              ))
-            ) : (
-              <option value="">No tokens disponibles para esta red</option>
-            )}
-          </select>
+              ))}
+            </select>
+          </div>
+
+          {/* Configuración */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground/80 mb-2">
+                {t.form.divisions} (Ticks)
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={divisions}
+                onChange={(e) => setDivisions(e.target.value)}
+                className="w-full"
+                placeholder="4"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground/80 mb-2">
+                {t.form.interval}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  value={interval}
+                  onChange={(e) => setInterval(e.target.value)}
+                  className="w-full"
+                  placeholder="1"
+                />
+                <select
+                  value={intervalUnit}
+                  onChange={(e) => setIntervalUnit(e.target.value as 'days' | 'minutes')}
+                  className="w-32 bg-input border border-border rounded-lg px-3 py-2"
+                >
+                  <option value="days">Days</option>
+                  <option value="minutes">Minutes</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Configuración del DCA */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-sm text-gray-600">{t.form.divisions}</label>
-            <input
-              type="number"
-              min="1"
-              value={divisions}
-              onChange={(e) => setDivisions(e.target.value)}
-              className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none"
-            />
-          </div>
-          <div>
-            <label className="text-sm text-gray-600">{t.form.interval}</label>
-            <input
-              type="number"
-              min="1"
-              value={interval}
-              onChange={(e) => setInterval(e.target.value)}
-              className="w-full border rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none"
-            />
-          </div>
+        {/* Warning */}
+        <div className="mt-4 p-4 bg-accent/10 border border-accent/20 rounded-lg">
+          <p className="text-xs text-foreground/70 leading-relaxed">
+            {t.form.warning(budget, divisions, interval)}
+          </p>
         </div>
-      </div>
 
-      {/* Aviso legal */}
-      <div className="p-3 bg-yellow-50 text-xs text-gray-600 rounded-lg border border-yellow-200 whitespace-pre-wrap">
-        {t.form.warning(budget, divisions, interval)}
-      </div>
+        {/* Consent */}
+        <div className="flex items-start gap-3 mt-4 text-xs text-foreground/70">
+          <input
+            type="checkbox"
+            id="consent"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            className="mt-0.5 w-4 h-4 rounded border-border bg-input text-primary focus:ring-primary/50"
+          />
+          <label htmlFor="consent" className="cursor-pointer select-none leading-relaxed">
+            ✅ {lang === "es" ? "Acepto los términos." : "I accept terms."}
+          </label>
+        </div>
 
-      {/* Confirmación */}
-      <div className="flex items-center gap-2 text-xs text-gray-600">
-        <input
-          type="checkbox"
-          id="consent"
-          checked={consent}
-          onChange={(e) => setConsent(e.target.checked)}
-          className="w-4 h-4 border-gray-300 text-indigo-600 rounded focus:ring-indigo-500"
-        />
-        <label htmlFor="consent" className="cursor-pointer select-none">
-          ✅{" "}
-          {lang === "es"
-            ? "He leído y entiendo los términos anteriores."
-            : lang === "en"
-            ? "I have read and understand the above terms."
-            : "Li e compreendi os termos acima."}
-        </label>
-      </div>
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={!isFormValid || loading}
+          className="w-full mt-6 btn-primary"
+        >
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="pulse">⏳</span> {t.form.signing}
+            </span>
+          ) : (
+            t.form.approveButton
+          )}
+        </button>
 
-      {/* Botón principal */}
-      <button
-        type="submit"
-        disabled={!isFormValid || loading}
-        className={`w-full py-2.5 rounded-lg text-white font-medium transition ${
-          !isFormValid || loading
-            ? "bg-gray-300 cursor-not-allowed"
-            : "bg-indigo-600 hover:bg-indigo-700"
-        }`}
-      >
-        {loading ? t.form.signing : t.form.approveButton}
-      </button>
+        {/* Status */}
+        {status && (
+          <div className="mt-4 p-3 bg-secondary/50 border border-border rounded-lg">
+            <p className="text-sm text-center text-foreground/80 break-all">
+              {status}
+            </p>
+          </div>
+        )}
 
-      {/* Estado */}
-      {status && (
-        <p className="text-sm text-center text-gray-500 whitespace-pre-wrap mt-2">
-          {status}
-        </p>
-      )}
-
-      {!isConnected && (
-        <p className="text-xs text-center text-gray-400 mt-2">
-          {t.form.connectWallet}
-        </p>
-      )}
-    </form>
+        {!isConnected && (
+          <p className="text-xs text-center text-foreground/40 mt-4">
+            {t.form.connectWallet}
+          </p>
+        )}
+      </form>
+    </>
   );
 }

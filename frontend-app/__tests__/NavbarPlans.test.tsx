@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import NavbarPlans from "../src/components/NavbarPlans";
+import NavbarPlans from "../src/components/NavBarPlans";
 import { useRouter } from "next/router";
 
 jest.mock("next/router", () => ({

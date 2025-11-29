@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { useEffect } from "react";
 import { useAccount } from "wagmi";
 
 interface DCAState {
@@ -23,10 +24,9 @@ export function useSyncWallet() {
   const { address, isConnected } = useAccount();
   const setConnection = useDCAStore((state) => state.setConnection);
 
-  // sincroniza automáticamente cuando cambia wagmi
-  if (typeof window !== "undefined") {
+  useEffect(() => {
     setConnection(address, isConnected);
-  }
+  }, [address, isConnected, setConnection]);
 
   return { address, isConnected };
 }

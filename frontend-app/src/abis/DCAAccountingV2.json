@@ -1,0 +1,17 @@
+{
+  "abi": [
+    {
+      "inputs": [
+        { "internalType": "string", "name": "toToken", "type": "string" },
+        { "internalType": "uint256", "name": "totalBudget", "type": "uint256" },
+        { "internalType": "uint256", "name": "amountPerTick", "type": "uint256" },
+        { "internalType": "uint256", "name": "interval", "type": "uint256" },
+        { "internalType": "uint256", "name": "totalTicks", "type": "uint256" }
+      ],
+      "name": "createPlan",
+      "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ]
+}
