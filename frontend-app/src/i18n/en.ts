@@ -14,12 +14,12 @@ export const en = {
         totalBudget: "Total budget (USDC)",
         targetToken: "Target cryptocurrency",
         divisions: "Number of purchases",
-        interval: "Interval (days)",
+        interval: "Interval",
         approveButton: "🚀 Approve and create plan",
         signing: "⏳ Signing...",
         connectWallet: "Connect your wallet to get started.",
         warning: (budget: string, divisions: string, interval: string) =>
-            `⚠️ You are about to approve ${budget || "0"} USDC to execute ${divisions} automated purchases every ${interval} day(s).\n\n🔐 This service does not custody your funds. Operations are executed via verified smart contracts on Blockchain. By approving this plan, you authorize the DCA contract to use your budget exclusively for the purchases you defined.`,
+            `⚠️ You are about to approve ${budget || "0"} USDC to execute ${divisions} automated purchases every ${interval} unit(s).\n\n🔐 This service does not custody your funds. Operations are executed via verified smart contracts on Blockchain. By approving this plan, you authorize the DCA contract to use your budget exclusively for the purchases you defined.`,
     },
     status: {
         waitingApproval: "Waiting for approval signature...",

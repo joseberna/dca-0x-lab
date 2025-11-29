@@ -1,16 +1,18 @@
 "use client";
 import { useState, useMemo, useEffect } from "react";
-import { useAccount, useWriteContract, useChainId } from "wagmi";
+import { useAccount, useWriteContract, useChainId, usePublicClient } from "wagmi";
 import { parseUnits } from "viem";
 import DCA_ACCOUNTING_ABI from "../abis/DCAAccountingV2.json";
 import { getContracts } from "../utils/contracts";
 import { useLangStore } from "../store/useLangStore";
 import { getLang } from "../i18n";
 import { getAvailableTokens } from "../utils/getAvailableTokens";
+import logger from "../utils/logger";
 
 export default function DCAPlanForm() {
   const { isConnected } = useAccount();
-  const { writeContractAsync } = useWriteContract(); // Use Async for better error handling
+  const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
   const chainId = useChainId();
   const { lang } = useLangStore();
   const t = getLang(lang);
@@ -21,6 +23,7 @@ export default function DCAPlanForm() {
   const [tokenTo, setTokenTo] = useState("WBTC");
   const [divisions, setDivisions] = useState("");
   const [interval, setInterval] = useState("");
+  const [intervalUnit, setIntervalUnit] = useState<'days' | 'minutes'>('days');
   const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
@@ -48,26 +51,16 @@ export default function DCAPlanForm() {
 
     const allowance = parseUnits(budget, 6); // USDC has 6 decimals
     const amountPerInterval = allowance / BigInt(divisions);
-    // Interval in seconds (assuming input is days for UX, or seconds for testing?)
-    // Let's assume input is MINUTES for testing/PoC, or DAYS for prod.
-    // User request didn't specify, but usually days. Let's use MINUTES for easier testing if user wants.
-    // Standard: Days. Let's stick to Days * 24 * 60 * 60.
-    // For PoC/Demo, maybe allow smaller.
-    const intervalSeconds = BigInt(interval) * BigInt(60); // Minutes for demo? Or Days?
-    // Let's stick to the previous code: parseInt(interval) * 24 * 60 * 60 (Days)
-    // But for testing, 1 day is too long.
-    // Let's assume the input is "Seconds" for raw control or "Minutes".
-    // The previous code had: parseInt(interval) * 24 * 60 * 60.
-    // I will change it to MINUTES for this PoC to make it testable.
-    const intervalCalc = BigInt(interval) * BigInt(60); 
+    const intervalCalc = BigInt(interval) * BigInt(intervalUnit === 'days' ? 86400 : 60);
 
     try {
+      if (!publicClient) throw new Error("Public client not initialized");
       setLoading(true);
       setStatus(t.status.waitingApproval);
 
       // 1️⃣ Approve USDC
-      console.log("Approving USDC...", contracts.USDC, "Spender:", contracts.DCA_ACCOUNTING);
-      await writeContractAsync({
+      logger.info("Approving USDC...", { service: 'Frontend', method: 'handleCreate', txHash: contracts.USDC });
+      const approveHash = await writeContractAsync({
         abi: [
           {
             name: "approve",
@@ -85,15 +78,19 @@ export default function DCAPlanForm() {
         args: [contracts.DCA_ACCOUNTING as `0x${string}`, allowance],
       });
 
+      logger.info(`Approve sent: ${approveHash}`, { service: 'Frontend', method: 'approve' });
+      setStatus("⏳ Waiting for approval confirmation...");
+      
+      await publicClient.waitForTransactionReceipt({ hash: approveHash });
+      logger.success("Approve confirmed", { service: 'Frontend', method: 'approve' });
+
       setStatus(t.status.approved);
 
       // 2️⃣ Create Plan
-      console.log("Creating Plan...", {
-        toToken: tokenTo,
-        totalBudget: allowance,
-        amountPerTick: amountPerInterval,
-        interval: intervalCalc,
-        totalTicks: BigInt(divisions)
+      logger.info("Creating Plan...", {
+        service: 'Frontend',
+        method: 'createPlan',
+        planId: `Budget: ${allowance}, Ticks: ${divisions}`
       });
 
       const tx = await writeContractAsync({
@@ -107,7 +104,7 @@ export default function DCAPlanForm() {
           intervalCalc,
           BigInt(divisions),
         ],
-        gas: BigInt(500000), // Manual gas limit to prevent exceeding network cap
+        // gas: BigInt(500000), // Removed manual gas limit, should work if approved
       });
 
       console.log("Tx Hash:", tx);
@@ -209,16 +206,26 @@ export default function DCAPlanForm() {
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground/80 mb-2">
-              {t.form.interval} (Min)
+              {t.form.interval}
             </label>
-            <input
-              type="number"
-              min="1"
-              value={interval}
-              onChange={(e) => setInterval(e.target.value)}
-              className="w-full"
-              placeholder="60"
-            />
+            <div className="flex gap-2">
+              <input
+                type="number"
+                min="1"
+                value={interval}
+                onChange={(e) => setInterval(e.target.value)}
+                className="w-full"
+                placeholder="1"
+              />
+              <select
+                value={intervalUnit}
+                onChange={(e) => setIntervalUnit(e.target.value as 'days' | 'minutes')}
+                className="w-32 bg-input border border-border rounded-lg px-3 py-2"
+              >
+                <option value="days">Days</option>
+                <option value="minutes">Minutes</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>

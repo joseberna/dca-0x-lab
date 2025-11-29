@@ -14,12 +14,12 @@ export const pt = {
         totalBudget: "Orçamento total (USDC)",
         targetToken: "Criptomoeda de destino",
         divisions: "Número de compras",
-        interval: "Intervalo (dias)",
+        interval: "Intervalo",
         approveButton: "🚀 Aprovar e criar plano",
         signing: "⏳ Assinando...",
         connectWallet: "Conecte sua carteira para começar.",
         warning: (budget: string, divisions: string, interval: string) =>
-            `⚠️ Você está prestes a aprovar o uso de ${budget || "0"} USDC para realizar ${divisions} compras automáticas a cada ${interval} dia(s).\n\n🔐 Este serviço não custodia seus fundos. As operações são executadas por contratos inteligentes verificados na Blockchain. Ao aprovar este plano, você autoriza o contrato DCA a usar seu orçamento exclusivamente para as compras que definiu.`,
+            `⚠️ Você está prestes a aprovar o uso de ${budget || "0"} USDC para realizar ${divisions} compras automáticas a cada ${interval} unidade(s).\n\n🔐 Este serviço não custodia seus fundos. As operações são executadas por contratos inteligentes verificados na Blockchain. Ao aprovar este plano, você autoriza o contrato DCA a usar seu orçamento exclusivamente para as compras que definiu.`,
     },
     status: {
         waitingApproval: "Aguardando assinatura de aprovação...",
