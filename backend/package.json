@@ -5,23 +5,18 @@
   "main": "dist/index.js",
   "license": "MIT",
   "scripts": {
-    "dev": "tsx src/index.ts",
-    "build": "tsc",
-    "start": "node --loader tsx ./src/index.ts",
-
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
     "test": "jest --runInBand --verbose",
     "test:mongo": "npx ts-node --project ./tsconfig.json ./tests/mongoConnectionTest.ts",
     "test:createPlan": "npx ts-node --project ./tsconfig.json ./tests/createPlanTest.ts",
-
     "approve:usdc": "npx ts-node --esm src/infraestructure/blockchain/scripts/approveUSDC.ts",
     "test:ci": "jest --coverage --maxWorkers=2 --silent",
-
     "test:job": "npx ts-node src/scripts/testDCAJob.ts",
     "allow:usdc": "npx ts-node src/scripts/testAllowsWallet.ts",
     "createDCA": "npx ts-node src/scripts/createPlanDCA.ts",
     "test:router": "npx ts-node src/scripts/testRouter.ts",
     "test:pool": "npx ts-node src/scripts/testPool.ts",
-
     "biconomy": "npx ts-node src/infraestructure/blockchain/scripts/biconomyClient.ts",
     "test:uniswapV3": "npx ts-node src/infraestructure/blockchain/scripts/testUniswapV3.ts"
   },
