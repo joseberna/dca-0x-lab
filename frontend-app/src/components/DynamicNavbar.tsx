@@ -39,13 +39,20 @@ export default function DynamicNavbar({ title, breadcrumbs, actions }: Props) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <Link href="/" className="flex items-center space-x-2 group">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center glow-hover">
-                <span className="text-xl font-bold text-primary-foreground">₿</span>
+            <Link href="/" className="flex items-center space-x-3 group">
+              <img 
+                src="/dedlyfi-logo.png" 
+                alt="DedlyFi Logo" 
+                className="w-10 h-10 object-contain"
+              />
+              <div className="hidden sm:flex flex-col">
+                <span className="font-bold text-xl gradient-text">
+                  DedlyFi
+                </span>
+                <span className="text-xs text-foreground/50">
+                  {t.navbar.title}
+                </span>
               </div>
-              <span className="font-bold text-xl gradient-text hidden sm:block">
-                {t.navbar.title}
-              </span>
             </Link>
 
             {/* Navigation */}
