@@ -24,10 +24,10 @@ export const startServer = async (): Promise<void> => {
 
     app.use(cors());
     app.use(express.json());
-    
+
     // Serve static files (CSS, favicon, etc.)
     app.use(express.static('public'));
-    
+
     app.use("/api/wallets", walletRoutes);
     app.use("/api/dca", dcaRoutes);
     app.get("/ping", (_, res) => res.send("pong 🏓"));
@@ -71,7 +71,7 @@ export const startServer = async (): Promise<void> => {
     });
 
     const PORT = process.env.PORT || 4000;
-    server.listen(PORT, () => {
+    server.listen(PORT, "0.0.0.0", () => {
       logger.info(`🚀 Server running at http://localhost:${PORT}`, { service: 'System', method: 'Server' });
       logger.info(`📘 Swagger docs: http://localhost:${PORT}/docs`, { service: 'System', method: 'Server' });
     });
