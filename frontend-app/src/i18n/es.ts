@@ -38,6 +38,14 @@ export const es = {
         nonce: "🔄 Error de sincronización en Metamask. Ve a: Configuración > Avanzado > Borrar datos de actividad (Clear activity tab data). Esto solucionará el error.",
         unknown: "Error desconocido"
     },
+    toast: {
+        planCreatedTitle: "🎉 ¡Plan Creado Exitosamente!",
+        planCreatedMessage: (budget: string, token: string) => `Tu plan DCA de ${budget} USDC → ${token} ha sido creado y sincronizado.`,
+        planCreatedPendingTitle: "Plan Creado (Sincronización Pendiente)",
+        planCreatedPendingMessage: "Tu plan fue creado en blockchain pero puede tardar un momento en aparecer en el dashboard.",
+        transactionFailed: "Transacción Fallida",
+        transactionCancelled: "Transacción Cancelada"
+    },
     features: {
         nonCustodial: {
             title: "Non-Custodial",
