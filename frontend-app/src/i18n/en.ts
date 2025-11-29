@@ -38,6 +38,14 @@ export const en = {
         nonce: "🔄 Metamask synchronization error. Go to: Settings > Advanced > Clear activity tab data. This will fix the error.",
         unknown: "Unknown error"
     },
+    toast: {
+        planCreatedTitle: "🎉 Plan Created Successfully!",
+        planCreatedMessage: (budget: string, token: string) => `Your DCA plan for ${budget} USDC → ${token} has been created and synced.`,
+        planCreatedPendingTitle: "Plan Created (Sync Pending)",
+        planCreatedPendingMessage: "Your plan was created on-chain but may take a moment to appear in the dashboard.",
+        transactionFailed: "Transaction Failed",
+        transactionCancelled: "Transaction Cancelled"
+    },
     features: {
         nonCustodial: {
             title: "Non-Custodial",

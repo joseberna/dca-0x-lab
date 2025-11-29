@@ -128,8 +128,8 @@ export default function DCAPlanForm() {
         
         // Show success toast
         toast.success(
-          "🎉 Plan Created Successfully!",
-          `Your DCA plan for ${budget} USDC → ${tokenTo} has been created and synced.`,
+          t.toast.planCreatedTitle,
+          t.toast.planCreatedMessage(budget, tokenTo),
           6000
         );
       } catch (syncErr) {
@@ -137,8 +137,8 @@ export default function DCAPlanForm() {
         
         // Show warning toast (plan created but not synced)
         toast.warning(
-          "Plan Created (Sync Pending)",
-          "Your plan was created on-chain but may take a moment to appear in the dashboard.",
+          t.toast.planCreatedPendingTitle,
+          t.toast.planCreatedPendingMessage,
           6000
         );
       }
@@ -158,7 +158,7 @@ export default function DCAPlanForm() {
       logger.error(`Transaction failed: ${err.message}`, { service: 'Frontend', method: 'handleCreate' });
       
       // Better error messages for users
-      let errorTitle = "Transaction Failed";
+      let errorTitle = t.toast.transactionFailed;
       let errorMessage = "";
       
       if (err.message?.includes("underpriced")) {
@@ -168,7 +168,7 @@ export default function DCAPlanForm() {
       } else if (err.message?.includes("insufficient funds")) {
         errorMessage = t.errors.insufficientFunds;
       } else if (err.message?.includes("User rejected") || err.code === 4001) {
-        errorTitle = "Transaction Cancelled";
+        errorTitle = t.toast.transactionCancelled;
         errorMessage = t.errors.userRejected;
       } else if (err.message?.includes("nonce") || err.message?.includes("Nonce")) {
         errorMessage = t.errors.nonce;
