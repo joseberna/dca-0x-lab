@@ -300,6 +300,29 @@ router.delete("/:planId", async (req, res) => {
   }
 });
 
+// ============================================================================
+// 🌍 PUBLIC ROUTES
+// ============================================================================
+
+/**
+ * @openapi
+ * /api/dca/plans:
+ *   get:
+ *     summary: Listar todos los planes (para filtrado en cliente)
+ *     tags: [DCA Public]
+ *     responses:
+ *       200:
+ *         description: Lista de planes
+ */
+router.get("/plans", async (req, res) => {
+  try {
+    const plans = await planRepo.findAll(1, 1000);
+    res.json({ success: true, data: plans });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // Legacy routes (mantener por compatibilidad si es necesario)
 router.get("/wallet/:walletAddress", async (req, res) => {
   try {
