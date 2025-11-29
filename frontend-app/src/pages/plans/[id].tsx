@@ -41,7 +41,7 @@ export default function PlanDetail() {
   const fetchPlan = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const response = await axios.get(`${apiUrl}/api/dca/plans/${id}`);
+      const response = await axios.get(`${apiUrl}/api/dca/${id}`);
       setPlan(response.data.data);
     } catch (error) {
       console.error("Error fetching plan:", error);

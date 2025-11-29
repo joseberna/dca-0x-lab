@@ -34,20 +34,15 @@ export default function MyPlans() {
   }, [isConnected, address]);
 
   const fetchPlans = async () => {
+    if (!address) return;
+    
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      // In a real app, we should filter by user address in the backend
-      // For now, we fetch all and filter here or assume the backend handles it if we passed the address
-      // But looking at the backend code, it returns all plans. Let's filter client side for now if needed,
-      // or just show all for this PoC. Ideally we pass ?user=address
-      const response = await axios.get(`${apiUrl}/api/dca/plans`);
+      // Use the specific endpoint for user plans
+      const response = await axios.get(`${apiUrl}/api/dca/my-plans/${address}`);
       
-      // Filter by user address if the API returns all plans
-      const userPlans = response.data.data.filter((p: any) => 
-        p.userAddress.toLowerCase() === address?.toLowerCase()
-      );
-      
-      setPlans(userPlans);
+      // The backend returns { success: true, data: [...] }
+      setPlans(response.data.data || []);
     } catch (error) {
       console.error("Error fetching plans:", error);
     } finally {
