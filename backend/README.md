@@ -1,146 +1,297 @@
-# 💸 DCA 0x Lab Backend
+# ⚡ DedlyFi Backend
 
-Backend robusto y escalable desarrollado en **Node.js + TypeScript** para gestionar y automatizar planes DCA (Dollar Cost Averaging) en redes EVM (Sepolia, Polygon).
+High-performance backend API for DedlyFi Dollar Cost Averaging platform with blockchain integration, automated execution, and real-time updates.
 
-Cuenta con una arquitectura orientada a eventos, colas de tareas distribuidas con **Redis + BullMQ**, persistencia en **MongoDB**, y trazabilidad completa on-chain y off-chain.
+## 🚀 Features
 
----
+- ✅ **DCA Plan Management**: Create, read, update, and delete DCA plans
+- ✅ **Automated Execution**: BullMQ job queue for scheduled plan execution
+- ✅ **Blockchain Integration**: Ethers.js v6 + Viem for smart contract interaction
+- ✅ **Real-time Updates**: Socket.io for live plan status
+- ✅ **MongoDB Storage**: Persistent plan and execution data
+- ✅ **Redis Queue**: Reliable job scheduling and processing
+- ✅ **API Documentation**: Swagger/OpenAPI docs
+- ✅ **Admin Dashboard**: Bull Board for queue monitoring
 
-## 🧩 Arquitectura
+## 🛠️ Tech Stack
 
-El sistema sigue una estructura **Clean Architecture** y **Hexagonal**, separando responsabilidades:
+- **Runtime**: Node.js 20+
+- **Language**: TypeScript
+- **Framework**: Express.js
+- **Database**: MongoDB (Mongoose)
+- **Queue**: BullMQ + Redis
+- **Blockchain**: Ethers.js v6, Viem
+- **Real-time**: Socket.io
+- **Testing**: Jest + Supertest
+- **Documentation**: Swagger
+
+## 📦 Installation
+
+```bash
+# Install dependencies
+yarn install
+
+# Copy environment variables
+cp .env.example .env
+
+# Start development server
+yarn dev
+```
+
+## 🔧 Environment Variables
+
+Create a `.env` file:
+
+```env
+# Server
+PORT=4000
+NODE_ENV=development
+
+# Database
+MONGODB_URI=mongodb://localhost:27017/dca-prod
+
+# Blockchain
+RPC_URL=your_polygon_rpc_url
+RPC_URL_SEPOLIA=your_sepolia_rpc_url
+PRIVATE_KEY=your_wallet_private_key
+
+# Contracts
+DCA_ACCOUNTING_ADDRESS=0x...
+USDC_ADDRESS=0x...
+WBTC_ADDRESS=0x...
+WETH_ADDRESS=0x...
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# API Keys
+ZERO_X_API_KEY=your_0x_api_key
+```
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+yarn test
+
+# Run tests with coverage
+yarn test:ci
+
+# Run specific test
+yarn test dcaPlan.repository.test.ts
+```
+
+## 📁 Project Structure
 
 ```
 backend/
 ├── src/
-│   ├── application/         # Casos de uso y servicios (DCAService, TreasuryService)
-│   ├── config/              # Configuración (Logger, Redis, Swagger, Networks)
-│   ├── domain/              # Entidades, modelos y repositorios
-│   │   ├── models/          # Esquemas Mongoose (DCAPlan, DCAExecution)
-│   │   └── repositories/    # Abstracción de datos
-│   ├── infraestructure/     # Adaptadores externos
-│   │   ├── api/             # API REST (Express) + Controladores
-│   │   ├── blockchain/      # Interacción con Smart Contracts (Ethers.js)
-│   │   ├── database/        # Conexión MongoDB Atlas
-│   │   ├── jobs/            # Sistema de colas y workers (BullMQ)
-│   │   │   ├── queues/      # Definición de colas
-│   │   │   ├── scheduler/   # Cron jobs y planificadores
-│   │   │   └── workers/     # Procesadores de tareas en segundo plano
-│   │   └── sockets/         # Eventos en tiempo real (Socket.IO)
-│   └── __tests__/           # Pruebas unitarias e integradas (Jest)
+│   ├── application/
+│   │   └── services/
+│   │       ├── DCAService.ts
+│   │       └── ExecutionService.ts
+│   ├── domain/
+│   │   ├── entities/
+│   │   ├── models/
+│   │   └── repositories/
+│   ├── infraestructure/
+│   │   ├── api/
+│   │   │   ├── controllers/
+│   │   │   └── routes/
+│   │   ├── blockchain/
+│   │   │   └── scripts/
+│   │   ├── jobs/
+│   │   │   ├── dcaExecutor.job.ts
+│   │   │   └── treasurySwap.job.ts
+│   │   └── sockets/
+│   ├── config/
+│   │   ├── database.ts
+│   │   ├── logger.ts
+│   │   └── redis.ts
+│   └── index.ts
+├── __tests__/
+│   └── dcaPlan.repository.test.ts
+├── jest.config.js
+└── package.json
 ```
 
----
+## 🔌 API Endpoints
 
-## 🚀 Funcionalidades Principales
+### DCA Plans
 
-✅ **Gestión de Planes DCA**: Creación, pausa, cancelación y consulta de planes.
-✅ **Ejecución Distribuida**: Uso de **BullMQ + Redis Cloud** para procesar ejecuciones de manera fiable y escalable.
-✅ **Trazabilidad Completa**: Registro detallado de cada "tick" (ejecución) tanto en DB como en Blockchain.
-✅ **Panel de Administración**: Endpoints específicos para monitoreo global de planes y ejecuciones.
-✅ **Tesorería Automatizada**: Bots (`TreasuryService`) que monitorean y recargan liquidez automáticamente.
-✅ **Multi-Network**: Soporte configurado para Sepolia y Polygon.
-✅ **Documentación API**: Swagger UI integrado.
+```http
+# Create plan on-chain
+POST /api/dca/create-on-chain
+Content-Type: application/json
 
----
+{
+  "userAddress": "0x...",
+  "toToken": "WBTC",
+  "totalAmount": 100,
+  "amountPerInterval": 50,
+  "intervalSeconds": 86400,
+  "totalOperations": 2
+}
 
-## ⚙️ Instalación y Configuración
+# Get user plans
+GET /api/dca/my-plans/:userAddress
 
-### 1️⃣ Prerrequisitos
-- Node.js v18+
-- Yarn
-- MongoDB Atlas (o local)
-- Redis Cloud (o local)
+# Get plan details (with executions)
+GET /api/dca/my-plans/:userAddress/:planId
 
-### 2️⃣ Instalación
+# Sync plan from transaction
+POST /api/dca/sync
+Content-Type: application/json
+
+{
+  "txHash": "0x..."
+}
+```
+
+### Admin Endpoints
+
+```http
+# Get all plans (paginated)
+GET /api/dca/admin/plans?page=1&limit=10&status=active
+
+# Get plan details
+GET /api/dca/admin/plans/:planId
+
+# Get all executions
+GET /api/dca/admin/executions?page=1&limit=10
+```
+
+## 🔄 Job Queue
+
+### DCA Executor Job
+- **Schedule**: Every 5 minutes
+- **Function**: Check and execute pending DCA plans
+- **Retry**: 3 attempts with exponential backoff
+
+### Treasury Swap Job
+- **Schedule**: Every hour
+- **Function**: Swap accumulated USDC to WBTC/WETH
+- **Retry**: 2 attempts
+
+### Monitoring
+Access Bull Board at: `http://localhost:4000/admin/queues`
+
+## 🗄️ Database Schema
+
+### DCAPlan
+```typescript
+{
+  userAddress: string;
+  contractId: number;
+  network: string;
+  tokenFrom: string;
+  tokenTo: string;
+  totalAmount: number;
+  amountPerInterval: number;
+  intervalSeconds: number;
+  totalOperations: number;
+  executedOperations: number;
+  lastExecution: Date;
+  nextExecution: Date;
+  status: 'active' | 'paused' | 'completed' | 'failed';
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+### DCAExecution
+```typescript
+{
+  planId: ObjectId;
+  userAddress: string;
+  txHash: string;
+  amount: number;
+  tokenFrom: string;
+  tokenTo: string;
+  status: 'success' | 'failed' | 'pending';
+  executedAt: Date;
+  errorMessage?: string;
+}
+```
+
+## 🚢 Deployment
+
+### Railway (Recommended)
+
+1. Connect your GitHub repository to Railway
+2. Configure environment variables
+3. Deploy automatically on push to `main`
+
 ```bash
-cd backend
-yarn install
+# Install Railway CLI
+npm i -g @railway/cli
+
+# Login
+railway login
+
+# Deploy
+railway up
 ```
 
-### 3️⃣ Variables de Entorno (.env)
-Crea un archivo `.env` en la raíz de `backend/` con las siguientes variables:
+### Environment Variables in Railway
+- All variables from `.env`
+- `MONGODB_URI` (use MongoDB Atlas connection string)
+- `REDIS_URL` (Railway provides this automatically)
 
-```env
-# ⚙️ Servidor
-PORT=4000
-SCHEDULER_INTERVAL=60000
-
-# 🔐 Base de Datos
-MONGO_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/dca-prod
-REDIS_URL=redis://default:<pass>@<host>:<port>
-
-# 🌐 Blockchain (Sepolia / Polygon)
-ACTIVE_NETWORK=sepolia
-RPC_URL_SEPOLIA=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
-RPC_URL_POLYGON=https://polygon-rpc.com
-
-# 🔑 Private Keys (Admin & Treasury)
-PRIVATE_KEY=0x...
-TREASURY_PRIVATE_KEY=0x...
-
-# 📍 Smart Contracts (Actualizados)
-SEPOLIA_ACCOUNTING=0x...
-SEPOLIA_REGISTRY=0x...
+### Health Check
+```http
+GET /health
 ```
 
-### 4️⃣ Ejecutar en Desarrollo
+## 📊 Monitoring
+
+### Logs
 ```bash
-yarn dev
-```
-El servidor iniciará en `http://localhost:4000`.
+# View logs in Railway dashboard
+railway logs
 
----
-
-## 📚 Documentación API (Swagger)
-
-Una vez iniciado el servidor, visita:
-👉 **http://localhost:4000/docs**
-
-### Endpoints Clave:
-
-#### 👮 Admin (Trazabilidad)
-- `GET /api/dca/admin/plans`: Listar todos los planes (paginado).
-- `GET /api/dca/admin/executions`: Ver historial global de ejecuciones.
-- `GET /api/dca/admin/plans/{planId}`: Detalle profundo de un plan.
-
-#### 👤 Usuario
-- `GET /api/dca/my-plans/{userAddress}`: Ver mis planes.
-- `GET /api/dca/my-executions/{userAddress}`: Ver mi historial.
-
-#### ⚙️ Core
-- `POST /api/dca/create-on-chain`: Crear nuevo plan DCA.
-- `PUT /api/dca/{planId}`: Pausar/Reanudar plan.
-
----
-
-## 🧪 Testing
-
-El proyecto cuenta con una suite de pruebas unitarias usando **Jest**.
-
-```bash
-# Ejecutar todos los tests
-yarn test
-
-# Ejecutar tests específicos
-yarn jest src/__tests__/controllers/DCAAdminController.test.ts
+# Or use Winston logger
+# Logs are stored in logs/ directory
 ```
 
----
+### Metrics
+- Request count
+- Response time
+- Error rate
+- Queue length
+- Job success/failure rate
 
-## 🛠 Stack Tecnológico
+## 🔐 Security
 
-- **Runtime**: Node.js + TypeScript
-- **Framework**: Express.js
-- **DB**: MongoDB (Mongoose)
-- **Queue**: BullMQ + Redis
-- **Blockchain**: Ethers.js v5
-- **Testing**: Jest
-- **Docs**: Swagger (OpenAPI 3.0)
+- ✅ CORS configured
+- ✅ Environment variables for secrets
+- ✅ Input validation
+- ✅ Error handling
+- ✅ Rate limiting (TODO)
+- ✅ API key authentication (TODO)
 
----
+## 🤝 Contributing
 
-## 👨‍💻 Desarrollador
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request to `develop`
 
-**José Fernando Berna**
-*Blockchain Engineer & Full Stack Developer*
+## 📝 License
+
+MIT License - see LICENSE file for details
+
+## 🔗 Links
+
+- **API Docs**: [https://api.dedlyfi.com/docs](https://api.dedlyfi.com/docs)
+- **Frontend**: [https://dedlyfi.vercel.app](https://dedlyfi.vercel.app)
+- **Status Page**: [https://status.dedlyfi.com](https://status.dedlyfi.com)
+
+## 🆘 Support
+
+For issues and questions:
+- Open an issue on GitHub
+- Contact: support@dedlyfi.com

@@ -1,150 +1,266 @@
-# DCA 0x Lab - Dollar Cost Averaging Protocol
+# 💎 DedlyFi - Dollar Cost Averaging on Blockchain
 
-Protocolo DCA (Dollar Cost Averaging) completo con smart contracts, backend Node.js y frontend Next.js para automatizar compras periódicas de criptomonedas.
+![DedlyFi Logo](./frontend-app/public/dedlyfi-logo.png)
 
-## 🏗️ Arquitectura del Proyecto
+**DedlyFi** is a decentralized Dollar Cost Averaging (DCA) platform that enables users to automate their cryptocurrency investments on Polygon and Ethereum Sepolia testnets.
+
+[![CI/CD](https://github.com/yourusername/dca-0x-lab/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/yourusername/dca-0x-lab/actions)
+[![Frontend](https://img.shields.io/badge/Frontend-Vercel-black)](https://dedlyfi.vercel.app)
+[![Backend](https://img.shields.io/badge/Backend-Railway-purple)](https://api.dedlyfi.com)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+## 🌟 Features
+
+- ✅ **Automated DCA**: Set up recurring crypto purchases with custom intervals
+- ✅ **Non-Custodial**: Your keys, your crypto - always
+- ✅ **Multi-Token Support**: WBTC, WETH, and more
+- ✅ **Real-time Tracking**: Monitor your plans and executions live
+- ✅ **Multi-language**: English, Spanish, and Portuguese
+- ✅ **Professional UI**: Premium design with glassmorphism and gradients
+- ✅ **Mobile Responsive**: Works seamlessly on all devices
+
+## 🏗️ Architecture
+
+```
+┌─────────────────┐
+│   Frontend      │
+│   (Next.js)     │
+│   Vercel        │
+└────────┬────────┘
+         │
+         │ REST API
+         │
+┌────────▼────────┐      ┌──────────────┐
+│   Backend       │◄─────┤   MongoDB    │
+│   (Express)     │      │   Atlas      │
+│   Railway       │      └──────────────┘
+└────────┬────────┘
+         │
+         │ Web3
+         │
+┌────────▼────────┐
+│   Blockchain    │
+│   Polygon       │
+│   Sepolia       │
+└─────────────────┘
+```
+
+## 📦 Monorepo Structure
 
 ```
 dca-0x-lab/
-├── backend/          # API Node.js + TypeScript + MongoDB + Redis
-├── contracts/        # Smart Contracts Solidity + Hardhat
-├── frontend-app/     # Next.js 15 + Wagmi + RainbowKit
-└── package.json      # Orquestador raíz para ejecutar todo
+├── frontend-app/          # Next.js frontend
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── hooks/
+│   │   ├── store/
+│   │   └── i18n/
+│   ├── public/
+│   ├── vitest.config.ts
+│   └── README.md
+│
+├── backend/               # Express backend
+│   ├── src/
+│   │   ├── application/
+│   │   ├── domain/
+│   │   ├── infraestructure/
+│   │   └── config/
+│   ├── jest.config.js
+│   └── README.md
+│
+├── .github/
+│   └── workflows/
+│       └── ci-cd.yml     # CI/CD pipeline
+│
+├── DEPLOYMENT_STRATEGY.md
+└── README.md             # This file
 ```
 
-## 🚀 Inicio Rápido
+## 🚀 Quick Start
 
-### Prerrequisitos
+### Prerequisites
+- Node.js 20+
+- Yarn
+- MongoDB
+- Redis (for backend jobs)
+- MetaMask or compatible wallet
 
-- **Node.js**: v18.14.0 - v22.x (⚠️ **NO usar v23**, tiene incompatibilidades)
-- **Yarn**: v1.22.x (Yarn Classic)
-- **MongoDB**: Instancia local o MongoDB Atlas
-- **Redis**: Instancia local o Redis Cloud
-
-### Instalación
+### Installation
 
 ```bash
-# 1. Instalar dependencias de todos los proyectos
-yarn install:all
+# Clone the repository
+git clone https://github.com/yourusername/dca-0x-lab.git
+cd dca-0x-lab
 
-# 2. Configurar variables de entorno
-# Backend: copiar backend/.env.example a backend/.env
-# Frontend: copiar frontend-app/.env.local.example a frontend-app/.env.local
+# Install frontend dependencies
+cd frontend-app
+yarn install
+cp .env.example .env.local
+# Edit .env.local with your values
 
-# 3. Ejecutar todo el stack
-yarn dev
+# Install backend dependencies
+cd ../backend
+yarn install
+cp .env.example .env
+# Edit .env with your values
+
+# Start development servers
+yarn dev:frontend  # In one terminal
+yarn dev:backend   # In another terminal
 ```
 
-El comando `yarn dev` ejecuta simultáneamente:
-- **Backend**: `http://localhost:4000`
-- **Frontend**: `http://localhost:3000`
+### Environment Setup
 
-## 📦 Componentes del Proyecto
-
-### Backend (`/backend`)
-API REST con arquitectura limpia (Clean Architecture):
-- **Framework**: Express + TypeScript
-- **Base de datos**: MongoDB (Mongoose)
-- **Cache/Jobs**: Redis + BullMQ
-- **Blockchain**: Ethers.js v6
-- **Documentación**: Swagger UI en `/api-docs`
-
-**Endpoints principales:**
-- `POST /api/dca/create-on-chain` - Crear plan DCA
-- `GET /api/dca/my-plans/:userAddress` - Ver mis planes
-- `GET /api/dca/admin/plans` - Admin: ver todos los planes
-
-Ver [backend/README.md](./backend/README.md) para más detalles.
-
-### Smart Contracts (`/contracts`)
-Contratos modulares en Solidity:
-- **DCAAccountingV2**: Lógica principal de DCA
-- **TokenRegistry**: Registro de tokens soportados
-- **GenericVault**: Vaults para tokens ERC20
-- **Oracles**: Integración con Chainlink
-
-**Redes soportadas:**
-- Sepolia Testnet (desarrollo)
-- Polygon Mainnet (producción)
-
-Ver [contracts/README.md](./contracts/README.md) para más detalles.
-
-### Frontend (`/frontend-app`)
-Aplicación web con Next.js 15:
-- **Wallet**: RainbowKit + Wagmi v2
-- **UI**: TailwindCSS + Material UI
-- **Estado**: Zustand
-- **Queries**: TanStack Query
-- **Real-time**: Socket.IO
-
-Ver [frontend-app/README.md](./frontend-app/README.md) para más detalles.
-
-## 🔧 Scripts Disponibles
-
-```bash
-# Desarrollo
-yarn dev              # Ejecutar backend + frontend
-yarn dev:backend      # Solo backend
-yarn dev:frontend     # Solo frontend
-
-# Testing
-yarn test:backend     # Tests del backend
-yarn test:frontend    # Tests del frontend
-
-# Instalación
-yarn install:all      # Instalar deps de todos los proyectos
-```
-
-## 🌐 Variables de Entorno
-
-### Backend (`.env`)
-```env
-MONGO_URI=mongodb://...
-REDIS_URL=redis://...
-ACTIVE_NETWORK=sepolia
-RPC_URL_SEPOLIA=https://...
-PRIVATE_KEY=0x...
-SEPOLIA_ACCOUNTING=0x...
-```
-
-### Frontend (`.env.local`)
+#### Frontend (`.env.local`)
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:4000
-NEXT_PUBLIC_WC_PROJECT_ID=...
-NEXT_PUBLIC_RPC_URL_SEPOLIA=https://...
-NEXT_PUBLIC_SEPOLIA_DCA_ACCOUNTING=0x...
-NEXT_PUBLIC_SEPOLIA_USDC=0x...
+NEXT_PUBLIC_WC_PROJECT_ID=your_walletconnect_project_id
+NEXT_PUBLIC_RPC_URL=your_polygon_rpc_url
+NEXT_PUBLIC_RPC_URL_SEPOLIA=your_sepolia_rpc_url
 ```
 
-## 📚 Documentación Adicional
+#### Backend (`.env`)
+```env
+PORT=4000
+MONGODB_URI=mongodb://localhost:27017/dca-prod
+RPC_URL=your_polygon_rpc_url
+PRIVATE_KEY=your_wallet_private_key
+DCA_ACCOUNTING_ADDRESS=0x...
+REDIS_HOST=localhost
+```
 
-- [Backend README](./backend/README.md) - API, arquitectura, testing
-- [Contracts README](./contracts/README.md) - Smart contracts, deployment
-- [Frontend README](./frontend-app/README.md) - UI, componentes, hooks
+## 🧪 Testing
 
-## 🛠️ Troubleshooting
-
-### Error: "Your application tried to access yn/styled-jsx"
-Si usas Yarn 3 con PnP, desactívalo:
 ```bash
-yarn config set nodeLinker node-modules
-rm -rf .pnp.* .yarn/cache
-yarn install
+# Frontend tests
+cd frontend-app
+yarn test          # Watch mode
+yarn test:ci       # CI mode with coverage
+
+# Backend tests
+cd backend
+yarn test          # All tests
+yarn test:ci       # CI mode with coverage
 ```
 
-### Error: "The engine 'node' is incompatible"
-Usa Node.js v18 o v20:
+## 🚢 Deployment
+
+### Automated Deployment (CI/CD)
+
+The project uses GitHub Actions for automated deployment:
+
+1. **Push to `develop`**: Runs tests
+2. **Tests pass**: Auto-merges to `main`
+3. **Push to `main`**: Deploys to production
+
+### Manual Deployment
+
+#### Frontend (Vercel)
 ```bash
-nvm install 20
-nvm use 20
+cd frontend-app
+vercel --prod
 ```
 
-## 🤝 Contribución
+#### Backend (Railway)
+```bash
+cd backend
+railway up
+```
 
-1. Crear rama desde `develop`: `git checkout -b feature/mi-feature`
-2. Hacer cambios y commit
-3. Push y crear Pull Request a `develop`
+## 📊 Tech Stack
 
-## 📄 Licencia
+### Frontend
+- **Framework**: Next.js 15
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Web3**: Wagmi v2, Viem, RainbowKit
+- **State**: Zustand
+- **Testing**: Vitest + React Testing Library
 
-MIT
+### Backend
+- **Runtime**: Node.js 20
+- **Framework**: Express.js
+- **Language**: TypeScript
+- **Database**: MongoDB (Mongoose)
+- **Queue**: BullMQ + Redis
+- **Blockchain**: Ethers.js v6, Viem
+- **Testing**: Jest + Supertest
+
+### Infrastructure
+- **Frontend Hosting**: Vercel
+- **Backend Hosting**: Railway
+- **Database**: MongoDB Atlas
+- **CI/CD**: GitHub Actions
+
+## 🔐 Security
+
+- ✅ Non-custodial architecture
+- ✅ Environment variables for secrets
+- ✅ Input validation
+- ✅ CORS configuration
+- ✅ Error handling
+- ✅ Secure smart contract interactions
+
+## 📈 Roadmap
+
+- [ ] Multi-chain support (Arbitrum, Optimism)
+- [ ] Advanced DCA strategies (grid, TWAP)
+- [ ] Portfolio analytics
+- [ ] Mobile app (React Native)
+- [ ] DAO governance
+- [ ] Yield optimization
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request to `develop`
+
+### Commit Convention
+We use [Conventional Commits](https://www.conventionalcommits.org/):
+- `feat:` New feature
+- `fix:` Bug fix
+- `docs:` Documentation
+- `style:` Formatting
+- `refactor:` Code restructuring
+- `test:` Tests
+- `chore:` Maintenance
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🔗 Links
+
+- **Live Demo**: [https://dedlyfi.vercel.app](https://dedlyfi.vercel.app)
+- **API Docs**: [https://api.dedlyfi.com/docs](https://api.dedlyfi.com/docs)
+- **Documentation**: [https://docs.dedlyfi.com](https://docs.dedlyfi.com)
+- **Twitter**: [@DedlyFi](https://twitter.com/DedlyFi)
+- **Discord**: [Join our community](https://discord.gg/dedlyfi)
+
+## 🆘 Support
+
+- **Issues**: [GitHub Issues](https://github.com/yourusername/dca-0x-lab/issues)
+- **Email**: support@dedlyfi.com
+- **Discord**: [DedlyFi Community](https://discord.gg/dedlyfi)
+
+## 👥 Team
+
+- **Jose Berna** - Full Stack Developer & Blockchain Engineer
+
+## 🙏 Acknowledgments
+
+- [0x Protocol](https://0x.org/) for DEX aggregation
+- [Uniswap](https://uniswap.org/) for liquidity
+- [RainbowKit](https://www.rainbowkit.com/) for wallet connection
+- [Vercel](https://vercel.com/) for frontend hosting
+- [Railway](https://railway.app/) for backend hosting
+
+---
+
+**Made with ❤️ by the DedlyFi Team**
