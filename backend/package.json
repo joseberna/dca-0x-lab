@@ -2,24 +2,28 @@
   "name": "dca-0x-lab-backend",
   "version": "0.0.1",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "license": "MIT",
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc",
-    "start": "node src/index.ts",
+    "start": "node --loader tsx ./src/index.ts",
+
     "test": "jest --runInBand --verbose",
-    "test:mongo": "yarn ts-node --project ./tsconfig.json ./tests/mongoConnectionTest.ts",
-    "test:createPlan": "yarn ts-node --project ./tsconfig.json ./tests/createPlanTest.ts",
+    "test:mongo": "npx ts-node --project ./tsconfig.json ./tests/mongoConnectionTest.ts",
+    "test:createPlan": "npx ts-node --project ./tsconfig.json ./tests/createPlanTest.ts",
+
     "approve:usdc": "npx ts-node --esm src/infraestructure/blockchain/scripts/approveUSDC.ts",
     "test:ci": "jest --coverage --maxWorkers=2 --silent",
-    "test:job": "yarn ts-node src/scripts/testDCAJob.ts",
-    "allow:usdc": "yarn ts-node src/scripts/testAllowsWallet.ts",
-    "createDCA": "yarn ts-node src/scripts/createPlanDCA.ts",
-    "test:router": "yarn ts-node src/scripts/testRouter.ts",
-    "test:pool": "yarn ts-node src/scripts/testPool.ts",
-    "biconomy": "yarn ts-node src/infraestructure/blockchain/scripts/biconomyClient.ts",
-    "test:uniswapV3": "yarn ts-node src/infraestructure/blockchain/scripts/testUniswapV3.ts"
+
+    "test:job": "npx ts-node src/scripts/testDCAJob.ts",
+    "allow:usdc": "npx ts-node src/scripts/testAllowsWallet.ts",
+    "createDCA": "npx ts-node src/scripts/createPlanDCA.ts",
+    "test:router": "npx ts-node src/scripts/testRouter.ts",
+    "test:pool": "npx ts-node src/scripts/testPool.ts",
+
+    "biconomy": "npx ts-node src/infraestructure/blockchain/scripts/biconomyClient.ts",
+    "test:uniswapV3": "npx ts-node src/infraestructure/blockchain/scripts/testUniswapV3.ts"
   },
   "dependencies": {
     "@biconomy/abstractjs": "^1.1.17",
@@ -62,6 +66,5 @@
   },
   "resolutions": {
     "jsbi": "4.3.0"
-  },
-  "packageManager": "yarn@3.6.4+sha512.e70835d4d6d62c07be76b3c1529cb640c7443f0fe434ef4b6478a5a399218cbaf1511b396b3c56eb03bc86424cff2320f6167ad2fde273aa0df6e60b7754029f"
+  }
 }
