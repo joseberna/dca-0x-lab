@@ -38,6 +38,33 @@ export const en = {
         nonce: "🔄 Metamask synchronization error. Go to: Settings > Advanced > Clear activity tab data. This will fix the error.",
         unknown: "Unknown error"
     },
+    pages: {
+        myPlans: {
+            title: "My Plans",
+            budget: "Total Budget",
+            progress: "Progress",
+            status: "Status",
+            viewDetail: "View Detail",
+            noPlans: "No plans found. Create your first DCA plan!",
+            createPlan: "Create Plan"
+        },
+        planDetail: {
+            title: "Plan Detail",
+            id: "Plan ID",
+            token: "Token",
+            budget: "Budget",
+            interval: "Interval",
+            progress: "Progress",
+            status: "Status",
+            lastExec: "Last Execution",
+            nextExec: "Next Execution",
+            runNow: "Run Now",
+            cancel: "Cancel Plan",
+            amountPerTick: "Amount per Buy",
+            totalTicks: "Total Ticks",
+            created: "Created At"
+        }
+    },
     toast: {
         planCreatedTitle: "🎉 Plan Created Successfully!",
         planCreatedMessage: (budget: string, token: string) => `Your DCA plan for ${budget} USDC → ${token} has been created and synced.`,
