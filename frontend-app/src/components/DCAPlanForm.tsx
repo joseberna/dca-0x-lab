@@ -58,8 +58,8 @@ export default function DCAPlanForm() {
     const intervalCalc = BigInt(interval) * BigInt(intervalUnit === 'days' ? 86400 : 60);
 
     try {
-      if (!publicClient) throw new Error(t.errors.publicClient);
-      if (!address) throw new Error(t.errors.walletNotConnected);
+      if (!publicClient) throw new Error("Public client not initialized");
+      if (!address) throw new Error("Wallet not connected");
 
       setLoading(true);
       setStatus(t.status.checkingAllowance);
@@ -93,7 +93,7 @@ export default function DCAPlanForm() {
         logger.info("Allowance sufficient, skipping approval", { service: 'Frontend', method: 'handleCreate' });
       }
 
-      setStatus(t.status.creating);
+      setStatus(t.status.creatingPlan);
 
       // 2️⃣ Create Plan
       logger.info("Creating Plan...", {
@@ -116,20 +116,16 @@ export default function DCAPlanForm() {
         // gas: BigInt(500000), // Removed manual gas limit, should work if approved
       });
 
-
       console.log("Tx Hash:", tx);
       setStatus(`${t.status.created} Hash: ${tx}`);
       
       // Notify backend to index this plan immediately
       try {
-        setStatus(t.status.syncing);
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
         await axios.post(`${apiUrl}/api/dca/sync`, { txHash: tx });
         logger.success("Plan synced with backend", { service: 'Frontend', method: 'createPlan' });
-        setStatus(t.status.synced);
       } catch (syncErr) {
         logger.error("Failed to sync plan with backend", { service: 'Frontend', method: 'createPlan' });
-        // Don't fail the whole process if sync fails, user can refresh
       }
       
       // Keep loading for a moment to show success
@@ -142,17 +138,17 @@ export default function DCAPlanForm() {
       let errorMessage = "";
       
       if (err.message?.includes("underpriced")) {
-        errorMessage = t.errors.underpriced;
+        errorMessage = "⚠️ Gas price muy bajo. Por favor, cancela las transacciones pendientes en Metamask e intenta de nuevo.";
       } else if (err.message?.includes("gas limit too high")) {
-        errorMessage = t.errors.gasLimit;
+        errorMessage = "⚠️ El contrato puede tener un error. Verifica que tengas fondos USDC suficientes y que el contrato esté correctamente desplegado.";
       } else if (err.message?.includes("insufficient funds")) {
-        errorMessage = t.errors.insufficientFunds;
+        errorMessage = "💰 Fondos insuficientes para gas. Necesitas más ETH en tu wallet.";
       } else if (err.message?.includes("User rejected") || err.code === 4001) {
-        errorMessage = t.errors.userRejected;
+        errorMessage = "❌ Transacción cancelada por el usuario.";
       } else if (err.message?.includes("nonce") || err.message?.includes("Nonce")) {
-        errorMessage = t.errors.nonce;
+        errorMessage = "🔄 Error de sincronización en Metamask. Ve a: Configuración > Avanzado > Borrar datos de actividad (Clear activity tab data). Esto solucionará el error.";
       } else {
-        errorMessage = err.shortMessage || err.message || t.errors.unknown;
+        errorMessage = err.shortMessage || err.message || "Error desconocido";
       }
       
       setStatus(`${t.status.error}${errorMessage}`);

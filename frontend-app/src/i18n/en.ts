@@ -24,24 +24,11 @@ export const en = {
     status: {
         checkingAllowance: "🔍 Checking allowance...",
         waitingApproval: "Waiting for approval signature...",
-        waitingConfirmation: "⏳ Waiting for transaction confirmation...",
+        waitingConfirmation: "⏳ Waiting for approval confirmation...",
         approved: "Approved ✅, now sign plan creation...",
-        creating: "🚀 Creating plan on blockchain...",
-        created: "🚀 Plan successfully created on blockchain",
-        syncing: "🔄 Syncing with database...",
-        synced: "✅ Plan synced successfully",
+        creatingPlan: "🚀 Creating plan...",
+        created: "🚀 Plan created successfully on blockchain",
         error: "❌ Error: ",
-    },
-    errors: {
-        publicClient: "Public client not initialized",
-        walletNotConnected: "Wallet not connected",
-        underpriced: "⚠️ Gas price too low. Please cancel pending transactions in Metamask and try again.",
-        gasLimit: "⚠️ The contract may have an error. Verify you have enough USDC funds.",
-        insufficientFunds: "💰 Insufficient funds for gas. You need more ETH in your wallet.",
-        userRejected: "❌ Transaction rejected by user.",
-        nonce: "🔄 Synchronization error in Metamask. Go to: Settings > Advanced > Clear activity tab data.",
-        unknown: "Unknown error",
-        syncFailed: "Failed to sync with backend"
     },
     features: {
         nonCustodial: {

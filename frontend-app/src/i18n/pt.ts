@@ -22,26 +22,13 @@ export const pt = {
             `⚠️ Você está prestes a aprovar o uso de ${budget || "0"} USDC para realizar ${divisions} compras automáticas a cada ${interval} unidade(s).\n\n🔐 Este serviço não custodia seus fundos. As operações são executadas por contratos inteligentes verificados na Blockchain. Ao aprovar este plano, você autoriza o contrato DCA a usar seu orçamento exclusivamente para as compras que definiu.`,
     },
     status: {
-        checkingAllowance: "🔍 Verificando autorização...",
+        checkingAllowance: "🔍 Verificando permissões...",
         waitingApproval: "Aguardando assinatura de aprovação...",
-        waitingConfirmation: "⏳ Aguardando confirmação da transação...",
-        approved: "Aprovado ✅, agora assine a criação do plano...",
-        creating: "🚀 Criando plano na blockchain...",
+        waitingConfirmation: "⏳ Aguardando confirmação de aprovação...",
+        approved: "Aprovado ✅, agora assinar criação do plano...",
+        creatingPlan: "🚀 Criando plano...",
         created: "🚀 Plano criado com sucesso na blockchain",
-        syncing: "🔄 Sincronizando com banco de dados...",
-        synced: "✅ Plano sincronizado com sucesso",
         error: "❌ Erro: ",
-    },
-    errors: {
-        publicClient: "Cliente público não inicializado",
-        walletNotConnected: "Carteira não conectada",
-        underpriced: "⚠️ Preço do gás muito baixo. Por favor, cancele as transações pendentes no Metamask e tente novamente.",
-        gasLimit: "⚠️ O contrato pode ter um erro. Verifique se você tem fundos USDC suficientes.",
-        insufficientFunds: "💰 Fundos insuficientes para gás. Você precisa de mais ETH na sua carteira.",
-        userRejected: "❌ Transação rejeitada pelo usuário.",
-        nonce: "🔄 Erro de sincronização no Metamask. Vá para: Configurações > Avançado > Limpar dados da guia de atividade.",
-        unknown: "Erro desconhecido",
-        syncFailed: "Falha ao sincronizar com o backend"
     },
     features: {
         nonCustodial: {
