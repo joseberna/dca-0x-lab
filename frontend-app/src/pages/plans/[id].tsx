@@ -5,6 +5,16 @@ import { useLangStore } from "../../store/useLangStore";
 import { getLang } from "../../i18n";
 import axios from "axios";
 import { useToast } from "../../hooks/useToast";
+import { useAccount } from "wagmi";
+
+type Execution = {
+  _id: string;
+  txHash: string;
+  amount: number;
+  status: string;
+  executedAt: string;
+  errorMessage?: string;
+};
 
 type Plan = {
   _id: string;
@@ -20,6 +30,7 @@ type Plan = {
   lastExecution: string;
   nextExecution: string;
   createdAt: string;
+  executions?: Execution[];
 };
 
 export default function PlanDetail() {
@@ -28,20 +39,25 @@ export default function PlanDetail() {
   const { lang } = useLangStore();
   const t = getLang(lang);
   const toast = useToast();
+  const { address } = useAccount();
   
   const [plan, setPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (id) {
+    if (id && address) {
       fetchPlan();
+    } else if (!address && !loading) {
+        // If wallet not connected, maybe show loading or redirect?
+        // For now let's just wait
     }
-  }, [id]);
+  }, [id, address]);
 
   const fetchPlan = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const response = await axios.get(`${apiUrl}/api/dca/${id}`);
+      // Use the user-specific endpoint that includes executions
+      const response = await axios.get(`${apiUrl}/api/dca/my-plans/${address}/${id}`);
       setPlan(response.data.data);
     } catch (error) {
       console.error("Error fetching plan:", error);
@@ -69,6 +85,11 @@ export default function PlanDetail() {
     return new Date(dateString).toLocaleString();
   };
 
+  const truncateHash = (hash: string) => {
+    if (!hash) return "-";
+    return `${hash.substring(0, 6)}...${hash.substring(hash.length - 4)}`;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -82,7 +103,7 @@ export default function PlanDetail() {
       <div className="min-h-screen bg-background">
         <DynamicNavbar />
         <div className="text-center py-20">
-          <p className="text-foreground/60 text-lg">Plan not found.</p>
+          <p className="text-foreground/60 text-lg">Plan not found or access denied.</p>
         </div>
       </div>
     );
@@ -167,12 +188,59 @@ export default function PlanDetail() {
               </div>
             </div>
 
-            {/* Execution History Placeholder */}
+            {/* Execution History */}
             <div className="card glass p-6">
               <h3 className="text-lg font-bold text-foreground mb-4">Execution History</h3>
-              <div className="text-center py-8 text-foreground/40 text-sm">
-                No execution history available yet.
-              </div>
+              
+              {!plan.executions || plan.executions.length === 0 ? (
+                <div className="text-center py-8 text-foreground/40 text-sm">
+                  No execution history available yet.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-foreground/60 uppercase bg-secondary/50">
+                      <tr>
+                        <th className="px-4 py-3 rounded-l-lg">Date</th>
+                        <th className="px-4 py-3">Tx Hash</th>
+                        <th className="px-4 py-3">Amount</th>
+                        <th className="px-4 py-3 rounded-r-lg">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/30">
+                      {plan.executions.map((exec) => (
+                        <tr key={exec._id} className="hover:bg-secondary/30 transition-colors">
+                          <td className="px-4 py-3 font-medium text-foreground">
+                            {formatDate(exec.executedAt)}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-primary">
+                            <a 
+                              href={`https://sepolia.etherscan.io/tx/${exec.txHash}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="hover:underline"
+                            >
+                              {truncateHash(exec.txHash)}
+                            </a>
+                          </td>
+                          <td className="px-4 py-3 text-foreground/80">
+                            {formatUSDC(exec.amount)} USDC
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              exec.status === 'success'
+                                ? 'bg-green-500/10 text-green-500'
+                                : 'bg-red-500/10 text-red-500'
+                            }`}>
+                              {exec.status.toUpperCase()}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
 
