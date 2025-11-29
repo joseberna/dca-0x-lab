@@ -1,4 +1,7 @@
 export const en = {
+    nav: {
+        home: "Home"
+    },
     navbar: {
         title: "💸 DCA Dashboard",
         myPlans: "My Plans",

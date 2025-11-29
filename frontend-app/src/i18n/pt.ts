@@ -1,4 +1,7 @@
 export const pt = {
+    nav: {
+        home: "Início"
+    },
     navbar: {
         title: "💸 DCA Dashboard",
         myPlans: "Meus Planos",
