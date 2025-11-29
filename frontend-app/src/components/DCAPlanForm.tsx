@@ -138,8 +138,8 @@ export default function DCAPlanForm() {
         errorMessage = "💰 Fondos insuficientes para gas. Necesitas más ETH en tu wallet.";
       } else if (err.message?.includes("User rejected") || err.code === 4001) {
         errorMessage = "❌ Transacción cancelada por el usuario.";
-      } else if (err.message?.includes("nonce")) {
-        errorMessage = "⚠️ Error de nonce. Resetea tu cuenta en Metamask (Configuración > Avanzado > Resetear cuenta).";
+      } else if (err.message?.includes("nonce") || err.message?.includes("Nonce")) {
+        errorMessage = "🔄 Error de sincronización en Metamask. Ve a: Configuración > Avanzado > Borrar datos de actividad (Clear activity tab data). Esto solucionará el error.";
       } else {
         errorMessage = err.shortMessage || err.message || "Error desconocido";
       }
