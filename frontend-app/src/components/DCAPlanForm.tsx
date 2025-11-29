@@ -11,6 +11,7 @@ import logger from "../utils/logger";
 import { erc20Abi } from "viem";
 import { LoadingOverlay } from "./LoadingOverlay";
 import axios from "axios";
+import { useToast } from "../hooks/useToast";
 
 export default function DCAPlanForm() {
   const { isConnected, address } = useAccount();
@@ -20,6 +21,7 @@ export default function DCAPlanForm() {
   const { lang } = useLangStore();
   const t = getLang(lang);
   const contracts = getContracts(chainId);
+  const toast = useToast();
 
   const [isClient, setIsClient] = useState(false);
   const [budget, setBudget] = useState("");
@@ -117,25 +119,46 @@ export default function DCAPlanForm() {
       });
 
       console.log("Tx Hash:", tx);
-      setStatus(`${t.status.created} Hash: ${tx}`);
       
       // Notify backend to index this plan immediately
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
         await axios.post(`${apiUrl}/api/dca/sync`, { txHash: tx });
         logger.success("Plan synced with backend", { service: 'Frontend', method: 'createPlan' });
+        
+        // Show success toast
+        toast.success(
+          "🎉 Plan Created Successfully!",
+          `Your DCA plan for ${budget} USDC → ${tokenTo} has been created and synced.`,
+          6000
+        );
       } catch (syncErr) {
         logger.error("Failed to sync plan with backend", { service: 'Frontend', method: 'createPlan' });
+        
+        // Show warning toast (plan created but not synced)
+        toast.warning(
+          "Plan Created (Sync Pending)",
+          "Your plan was created on-chain but may take a moment to appear in the dashboard.",
+          6000
+        );
       }
       
-      // Keep loading for a moment to show success
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Reset form
+      setBudget("");
+      setDivisions("");
+      setInterval("");
+      setConsent(false);
+      setStatus("");
+      
+      // Keep loading for a moment
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
     } catch (err: any) {
       console.error("Transaction error:", err);
       logger.error(`Transaction failed: ${err.message}`, { service: 'Frontend', method: 'handleCreate' });
       
       // Better error messages for users
+      let errorTitle = "Transaction Failed";
       let errorMessage = "";
       
       if (err.message?.includes("underpriced")) {
@@ -145,6 +168,7 @@ export default function DCAPlanForm() {
       } else if (err.message?.includes("insufficient funds")) {
         errorMessage = t.errors.insufficientFunds;
       } else if (err.message?.includes("User rejected") || err.code === 4001) {
+        errorTitle = "Transaction Cancelled";
         errorMessage = t.errors.userRejected;
       } else if (err.message?.includes("nonce") || err.message?.includes("Nonce")) {
         errorMessage = t.errors.nonce;
@@ -152,7 +176,9 @@ export default function DCAPlanForm() {
         errorMessage = err.shortMessage || err.message || t.errors.unknown;
       }
       
-      setStatus(`${t.status.error}${errorMessage}`);
+      // Show error toast
+      toast.error(errorTitle, errorMessage, 8000);
+      setStatus("");
     } finally {
       setLoading(false);
     }

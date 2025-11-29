@@ -9,6 +9,7 @@ import {
   darkTheme,
 } from "@rainbow-me/rainbowkit";
 import "@rainbow-me/rainbowkit/styles.css";
+import { ToastContainer } from "../components/ToastContainer";
 
 const config = getDefaultConfig({
   appName: "DCA Dashboard",
@@ -36,6 +37,7 @@ export default function App({ Component, pageProps }: AppProps) {
           })}
         >
           <Component {...pageProps} />
+          <ToastContainer />
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
