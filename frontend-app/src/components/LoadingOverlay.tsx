@@ -17,6 +17,7 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ isLoading, messa
              src="/assets/bitcoin-logo.png" 
              alt="Loading" 
              fill
+             sizes="96px"
              className="object-contain"
            />
         </div>
