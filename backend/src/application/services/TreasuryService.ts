@@ -49,6 +49,8 @@ export class TreasuryService {
     } else {
       throw new Error(`Invalid ACTIVE_NETWORK: ${activeNetwork}`);
     }
+    logger.info(`🔌 RPC URL: ${rpcUrl}`, { service: 'TreasuryService', method: 'constructor' });
+    logger.info(`🔌 Configuración: ${JSON.stringify(config)}`, { service: 'TreasuryService', method: 'constructor' });
 
     if (!rpcUrl || !config.tokenAddress || !config.treasuryAddress) {
       throw new Error(`Missing configuration for ${this.tokenSymbol} on ${activeNetwork}`);
