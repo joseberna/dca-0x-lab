@@ -4,7 +4,7 @@
 
 **DedlyFi** is a decentralized Dollar Cost Averaging (DCA) platform that enables users to automate their cryptocurrency investments on Polygon and Ethereum Sepolia testnets.
 
-[![CI/CD](https://github.com/yourusername/dca-0x-lab/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/yourusername/dca-0x-lab/actions)
+[![CI/CD](https://github.com/joseberna/dca-0x-lab/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/joseberna/dca-0x-lab/actions)
 [![Frontend](https://img.shields.io/badge/Frontend-Vercel-black)](https://dedlyfi.vercel.app)
 [![Backend](https://img.shields.io/badge/Backend-Railway-purple)](https://api.dedlyfi.com)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -90,7 +90,7 @@ dca-0x-lab/
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/dca-0x-lab.git
+git clone https://github.com/joseberna/dca-0x-lab.git
 cd dca-0x-lab
 
 # Install frontend dependencies
