@@ -237,17 +237,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔗 Links
 
-- **Live Demo**: [https://dedlyfi.vercel.app](https://dedlyfi.vercel.app)
-- **API Docs**: [https://api.dedlyfi.com/docs](https://api.dedlyfi.com/docs)
-- **Documentation**: [https://docs.dedlyfi.com](https://docs.dedlyfi.com)
-- **Twitter**: [@DedlyFi](https://twitter.com/DedlyFi)
-- **Discord**: [Join our community](https://discord.gg/dedlyfi)
+- **Live Demo**: [https://dca-0x-lab.vercel.app/](https://dca-0x-lab.vercel.app/)
+- **API Docs**: [https://dca-0x-lab-prod.up.railway.app/docs/](https://dca-0x-lab-prod.up.railway.app/docs/)
 
 ## 🆘 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/dca-0x-lab/issues)
-- **Email**: support@dedlyfi.com
-- **Discord**: [DedlyFi Community](https://discord.gg/dedlyfi)
+- **Issues**: [GitHub Issues](https://github.com/joseberna/dca-0x-lab/)
+- **Email**: joseberna@gmail.com
 
 ## 👥 Team
 
