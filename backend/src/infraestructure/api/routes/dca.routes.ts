@@ -245,7 +245,7 @@ router.post("/create-on-chain", async (req, res) => {
       message: "Plan creado exitosamente on-chain y sincronizado con DB"
     });
   } catch (err: any) {
-    logger.error("[API] Error creating plan on-chain:", { error: err.message });
+    logger.error(`[API] Error creating plan on-chain: ${err.message}`);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -296,6 +296,32 @@ router.delete("/:planId", async (req, res) => {
     io.emit("dca:deleted", { planId: req.params.planId });
     res.json({ success: true, message: "Plan eliminado" });
   } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ============================================================================
+// 🌍 PUBLIC ROUTES
+// ============================================================================
+
+/**
+ * @openapi
+ * /api/dca/plans:
+ *   get:
+ *     summary: Listar todos los planes (para filtrado en cliente)
+ *     tags: [DCA Public]
+ *     responses:
+ *       200:
+ *         description: Lista de planes
+ */
+router.get("/plans", async (req, res) => {
+  try {
+    logger.info("[API] GET /plans requested", { service: 'API' });
+    const plans = await planRepo.findAll(1, 1000);
+    logger.info(`[API] Found ${plans.length} plans`, { service: 'API' });
+    res.json({ success: true, data: plans });
+  } catch (err: any) {
+    logger.error(`[API] Error in GET /plans: ${err.message}`);
     res.status(500).json({ success: false, message: err.message });
   }
 });

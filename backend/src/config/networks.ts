@@ -71,12 +71,12 @@ export const NETWORKS: Record<string, NetworkConfig> = {
   sepolia: {
     name: 'Sepolia',
     chainId: 11155111,
-    rpcUrl: process.env.SEPOLIA_RPC_URL || 'https://rpc.sepolia.org',
+    rpcUrl: process.env.SEPOLIA_RPC_URL || process.env.RPC_URL_SEPOLIA || 'https://rpc.sepolia.org',
     blockExplorer: 'https://sepolia.etherscan.io',
     tokens: {
-      USDC: process.env.SEPOLIA_USDC_TOKEN || '',
-      WETH: process.env.SEPOLIA_WETH_TOKEN || '',
-      WBTC: process.env.SEPOLIA_WBTC_TOKEN || '',
+      USDC: process.env.SEPOLIA_USDC_TOKEN || process.env.USDC_ADDRESS || '',
+      WETH: process.env.SEPOLIA_WETH_TOKEN || process.env.WETH_ADDRESS || '',
+      WBTC: process.env.SEPOLIA_WBTC_TOKEN || process.env.WBTC_ADDRESS || '',
     },
     oracles: {
       USDC: process.env.SEPOLIA_USDC_ORACLE || '',
@@ -84,13 +84,13 @@ export const NETWORKS: Record<string, NetworkConfig> = {
       WBTC: process.env.SEPOLIA_WBTC_ORACLE || '',
     },
     vaults: {
-      USDC: process.env.SEPOLIA_USDC_VAULT || '',
-      WETH: process.env.SEPOLIA_WETH_VAULT || '',
-      WBTC: process.env.SEPOLIA_WBTC_VAULT || '',
+      USDC: process.env.SEPOLIA_USDC_VAULT || process.env.TREASURY_ADDRESS || '',
+      WETH: process.env.SEPOLIA_WETH_VAULT || process.env.TREASURY_ADDRESS || '',
+      WBTC: process.env.SEPOLIA_WBTC_VAULT || process.env.TREASURY_ADDRESS || '',
     },
     contracts: {
       registry: process.env.SEPOLIA_REGISTRY || '',
-      accounting: process.env.SEPOLIA_ACCOUNTING || '',
+      accounting: process.env.SEPOLIA_ACCOUNTING || process.env.DCA_ACCOUNTING_ADDRESS || '',
     }
   },
   mainnet: {
