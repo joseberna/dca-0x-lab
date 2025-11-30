@@ -7,8 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "jest --watchAll",
-    "test:ci": "jest --runInBand"
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:ci": "vitest run --coverage",
+    "test:watch": "vitest watch"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

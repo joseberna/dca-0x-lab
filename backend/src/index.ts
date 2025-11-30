@@ -53,26 +53,38 @@ async function bootstrap(): Promise<void> {
     logger.info("🤖 Starting Treasury Bots...", { service: 'System', method: 'index' });
 
     // 1. WBTC Treasury
-    const wbtcTreasury = new TreasuryService({
-      tokenSymbol: "WBTC",
-      tokenAddress: process.env.SEPOLIA_WBTC_TOKEN || process.env.SM_WBTC_SEPOLIA!,
-      treasuryAddress: process.env.SEPOLIA_WBTC_VAULT || process.env.SM_TREASURYVAULT_SEPOLIA!,
-      lowBalanceThreshold: 0.1,
-      refillAmount: 1.0
-    });
+    const wbtcAddress = process.env.SEPOLIA_WBTC_TOKEN || process.env.SM_WBTC_SEPOLIA || process.env.WBTC_ADDRESS;
+    const wbtcVault = process.env.SEPOLIA_WBTC_VAULT || process.env.SM_TREASURYVAULT_SEPOLIA || process.env.TREASURY_ADDRESS;
+
+    if (wbtcAddress && wbtcVault) {
+      const wbtcTreasury = new TreasuryService({
+        tokenSymbol: "WBTC",
+        tokenAddress: wbtcAddress,
+        treasuryAddress: wbtcVault,
+        lowBalanceThreshold: 0.1,
+        refillAmount: 1.0
+      });
+      setInterval(() => wbtcTreasury.checkAndRefill(), 60000); // Check every 60s
+    } else {
+      logger.warn("⚠️ WBTC Treasury not initialized: Missing configuration", { service: 'System', method: 'index' });
+    }
 
     // 2. WETH Treasury
-    const wethTreasury = new TreasuryService({
-      tokenSymbol: "WETH",
-      tokenAddress: process.env.SEPOLIA_WETH_TOKEN!,
-      treasuryAddress: process.env.SEPOLIA_WETH_VAULT!,
-      lowBalanceThreshold: 0.5,
-      refillAmount: 5.0
-    });
+    const wethAddress = process.env.SEPOLIA_WETH_TOKEN || process.env.WETH_ADDRESS;
+    const wethVault = process.env.SEPOLIA_WETH_VAULT || process.env.TREASURY_ADDRESS;
 
-    // Start independent loops (threads)
-    setInterval(() => wbtcTreasury.checkAndRefill(), 60000); // Check every 60s
-    setInterval(() => wethTreasury.checkAndRefill(), 60000); // Check every 60s
+    if (wethAddress && wethVault) {
+      const wethTreasury = new TreasuryService({
+        tokenSymbol: "WETH",
+        tokenAddress: wethAddress,
+        treasuryAddress: wethVault,
+        lowBalanceThreshold: 0.5,
+        refillAmount: 5.0
+      });
+      setInterval(() => wethTreasury.checkAndRefill(), 60000); // Check every 60s
+    } else {
+      logger.warn("⚠️ WETH Treasury not initialized: Missing configuration", { service: 'System', method: 'index' });
+    }
 
     logger.info("✅ Treasury Bots started (WBTC & WETH) on separate threads", { service: 'System', method: 'Treasury' });
 

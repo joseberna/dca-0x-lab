@@ -1,5 +1,5 @@
 "use client";
-import Navbar from "../components/Navbar";
+import DynamicNavbar from "../components/DynamicNavbar";
 import DCAPlanForm from "@components/DCAPlanForm";
 import { useLangStore } from "../store/useLangStore";
 import { getLang } from "../i18n";
@@ -10,7 +10,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      <DynamicNavbar />
       
       <main className="relative">
         {/* Hero Section - Simplified */}

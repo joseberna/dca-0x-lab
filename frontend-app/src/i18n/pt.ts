@@ -1,4 +1,7 @@
 export const pt = {
+    nav: {
+        home: "Início"
+    },
     navbar: {
         title: "💸 DCA Dashboard",
         myPlans: "Meus Planos",
@@ -37,6 +40,33 @@ export const pt = {
         userRejected: "❌ Transação cancelada pelo usuário.",
         nonce: "🔄 Erro de sincronização no Metamask. Vá para: Configurações > Avançado > Limpar dados de atividade (Clear activity tab data). Isso resolverá o erro.",
         unknown: "Erro desconhecido"
+    },
+    pages: {
+        myPlans: {
+            title: "Meus Planos",
+            budget: "Orçamento Total",
+            progress: "Progresso",
+            status: "Status",
+            viewDetail: "Ver Detalhe",
+            noPlans: "Nenhum plano encontrado. Crie seu primeiro plano DCA!",
+            createPlan: "Criar Plano"
+        },
+        planDetail: {
+            title: "Detalhe do Plano",
+            id: "ID do Plano",
+            token: "Token",
+            budget: "Orçamento",
+            interval: "Intervalo",
+            progress: "Progresso",
+            status: "Status",
+            lastExec: "Última Execução",
+            nextExec: "Próxima Execução",
+            runNow: "Executar Agora",
+            cancel: "Cancelar Plano",
+            amountPerTick: "Valor por Compra",
+            totalTicks: "Total de Compras",
+            created: "Criado em"
+        }
     },
     toast: {
         planCreatedTitle: "🎉 Plano Criado com Sucesso!",
